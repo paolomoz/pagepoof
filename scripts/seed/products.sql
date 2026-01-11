@@ -1,0 +1,111 @@
+-- Auto-generated product seed data
+
+-- Products
+INSERT OR REPLACE INTO products (sku, name, series, model, price, regular_price, warranty_years, url, description, features) VALUES ('ascent-x5-smartprep', 'Ascent® X5 SmartPrep™ Kitchen System', 'Ascent X', 'X5', 949.95, 949.95, 10, '/us/en_us/shop/blenders/ascent-x5-smartprep-kitchen-system', 'The ultimate kitchen system with SmartPrep technology, food processor, and premium accessories.', '["SmartPrep Technology","Food Processor Attachment","Self-Detect Technology","Touch Interface","5 Program Settings","Tamper Indicator","+15 Second Button"]');
+INSERT OR REPLACE INTO products (sku, name, series, model, price, regular_price, warranty_years, url, description, features) VALUES ('ascent-x4-gourmet-smartprep', 'Ascent® X4 Gourmet SmartPrep™ Kitchen System', 'Ascent X', 'X4', 899.95, 899.95, 10, '/us/en_us/shop/blenders/ascent-x4-gourmet-smartprep-kitchen-system', 'Gourmet kitchen system with SmartPrep technology and premium accessories.', '["SmartPrep Technology","Self-Detect Technology","Touch Interface","4 Program Settings","Tamper Indicator","+15 Second Button"]');
+INSERT OR REPLACE INTO products (sku, name, series, model, price, regular_price, warranty_years, url, description, features) VALUES ('ascent-x5-stainless', 'Ascent® X5 with Stainless Steel Container', 'Ascent X', 'X5', 799.95, 799.95, 10, '/us/en_us/shop/blenders/ascent-x5-with-stainless-steel-container', 'Premium blender with stainless steel container for durability and style.', '["Stainless Steel Container","Self-Detect Technology","Touch Interface","5 Program Settings","Tamper Indicator","+15 Second Button"]');
+INSERT OR REPLACE INTO products (sku, name, series, model, price, regular_price, warranty_years, url, description, features) VALUES ('ascent-x5', 'Ascent® X5', 'Ascent X', 'X5', 749.95, 749.95, 10, '/us/en_us/shop/blenders/ascent-x5', 'Top-of-the-line Ascent X blender with all premium features.', '["Self-Detect Technology","Touch Interface","5 Program Settings","Digital Timer","Tamper Indicator","+15 Second Button"]');
+INSERT OR REPLACE INTO products (sku, name, series, model, price, regular_price, warranty_years, url, description, features) VALUES ('ascent-x4', 'Ascent® X4', 'Ascent X', 'X4', 699.95, 699.95, 10, '/us/en_us/shop/blenders/ascent-x4', 'Premium Ascent X blender with advanced features.', '["Self-Detect Technology","Touch Interface","4 Program Settings","Digital Timer","Tamper Indicator","+15 Second Button"]');
+INSERT OR REPLACE INTO products (sku, name, series, model, price, regular_price, warranty_years, url, description, features) VALUES ('ascent-x3', 'Ascent® X3', 'Ascent X', 'X3', 649.95, 649.95, 10, '/us/en_us/shop/blenders/ascent-x3', 'Mid-range Ascent X blender with touch interface.', '["Self-Detect Technology","Touch Interface","3 Program Settings","Digital Timer"]');
+INSERT OR REPLACE INTO products (sku, name, series, model, price, regular_price, warranty_years, url, description, features) VALUES ('ascent-x2-smartprep', 'Ascent® X2 SmartPrep™ Kitchen System', 'Ascent X', 'X2', 749.95, 749.95, 10, '/us/en_us/shop/blenders/ascent-x2-smartprep-kitchen-system', 'Entry Ascent X with SmartPrep kitchen system accessories.', '["SmartPrep Technology","Self-Detect Technology","Variable Speed","Pulse"]');
+INSERT OR REPLACE INTO products (sku, name, series, model, price, regular_price, warranty_years, url, description, features) VALUES ('ascent-x2', 'Ascent® X2', 'Ascent X', 'X2', 549.95, 549.95, 10, '/us/en_us/shop/blenders/ascent-x2', 'Entry-level Ascent X blender with Self-Detect technology.', '["Self-Detect Technology","Variable Speed","Pulse","Digital Timer"]');
+INSERT OR REPLACE INTO products (sku, name, series, model, price, regular_price, warranty_years, url, description, features) VALUES ('5200-stainless', '5200 + Stainless Steel Container', 'Legacy', '5200', 679.95, 679.95, 7, '/us/en_us/shop/blenders/5200-plus-stainless-steel-container', 'Classic 5200 with premium stainless steel container.', '["Variable Speed","Pulse","Stainless Steel Container","64oz Classic Container"]');
+INSERT OR REPLACE INTO products (sku, name, series, model, price, regular_price, warranty_years, url, description, features) VALUES ('5200-legacy-bundle', '5200 Legacy Bundle', 'Legacy', '5200', 649.95, 649.95, 7, '/us/en_us/shop/blenders/5200-legacy-bundle', 'Complete 5200 bundle with accessories.', '["Variable Speed","Pulse","64oz Classic Container","Recipe Book"]');
+INSERT OR REPLACE INTO products (sku, name, series, model, price, regular_price, warranty_years, url, description, features) VALUES ('5200-standard', '5200 Standard - Getting Started', 'Legacy', '5200', 499.95, 499.95, 7, '/us/en_us/shop/blenders/5200-standard-getting-started', 'Classic Vitamix 5200 - the original high-performance blender.', '["Variable Speed","Pulse","64oz Classic Container"]');
+INSERT OR REPLACE INTO products (sku, name, series, model, price, regular_price, warranty_years, url, description, features) VALUES ('e310-pca-bundle', 'E310 + Personal Cup Adapter', 'Explorian', 'E310', 499.95, 499.95, 5, '/us/en_us/shop/blenders/e310-and-pca-bundle', 'Entry-level Explorian with personal cup adapter for single servings.', '["Variable Speed","Pulse","48oz Container","Personal Cup Adapter"]');
+INSERT OR REPLACE INTO products (sku, name, series, model, price, regular_price, warranty_years, url, description, features) VALUES ('e310', 'Explorian® E310', 'Explorian', 'E310', 349.95, 349.95, 5, '/us/en_us/shop/blenders/e310', 'Entry-level Vitamix with professional-grade power.', '["Variable Speed","Pulse","48oz Container"]');
+INSERT OR REPLACE INTO products (sku, name, series, model, price, regular_price, warranty_years, url, description, features) VALUES ('e320', 'Explorian® E320', 'Explorian', 'E320', 449.95, 449.95, 5, '/us/en_us/shop/blenders/e320', 'Explorian with larger container for family-sized batches.', '["Variable Speed","Pulse","64oz Low-Profile Container"]');
+INSERT OR REPLACE INTO products (sku, name, series, model, price, regular_price, warranty_years, url, description, features) VALUES ('propel-750', 'Propel Series 750', 'Propel', '750', 679.95, 679.95, 7, '/us/en_us/shop/blenders/propel-750', 'High-performance Propel with 5 program settings.', '["5 Program Settings","Variable Speed","Pulse","64oz Low-Profile Container"]');
+INSERT OR REPLACE INTO products (sku, name, series, model, price, regular_price, warranty_years, url, description, features) VALUES ('propel-510', 'Propel Series 510', 'Propel', '510', 549.95, 549.95, 5, '/us/en_us/shop/blenders/propel-510', 'Propel with variable speed control.', '["Variable Speed","Pulse","48oz Container"]');
+
+-- Product Features
+INSERT OR REPLACE INTO product_features (series, feature_name, feature_value, feature_category, sort_order) VALUES ('Ascent X', 'Blending Programs', '✓', 'blender_features', 1);
+INSERT OR REPLACE INTO product_features (series, feature_name, feature_value, feature_category, sort_order) VALUES ('Ascent X', 'Variable Speed Control', '✓', 'blender_features', 2);
+INSERT OR REPLACE INTO product_features (series, feature_name, feature_value, feature_category, sort_order) VALUES ('Ascent X', 'Touch Buttons', '✓ (X3-X5)', 'blender_features', 3);
+INSERT OR REPLACE INTO product_features (series, feature_name, feature_value, feature_category, sort_order) VALUES ('Ascent X', 'Pulse', '✓', 'blender_features', 4);
+INSERT OR REPLACE INTO product_features (series, feature_name, feature_value, feature_category, sort_order) VALUES ('Ascent X', 'Digital Timer', '✓', 'blender_features', 5);
+INSERT OR REPLACE INTO product_features (series, feature_name, feature_value, feature_category, sort_order) VALUES ('Ascent X', 'Self-Detect Technology', '✓', 'blender_features', 6);
+INSERT OR REPLACE INTO product_features (series, feature_name, feature_value, feature_category, sort_order) VALUES ('Ascent X', 'Tamper Indicator', '✓ (X4, X5)', 'blender_features', 7);
+INSERT OR REPLACE INTO product_features (series, feature_name, feature_value, feature_category, sort_order) VALUES ('Ascent X', '+15 Second Button', '✓', 'blender_features', 8);
+INSERT OR REPLACE INTO product_features (series, feature_name, feature_value, feature_category, sort_order) VALUES ('Ascent X', 'Warranty', '10 Year', 'blender_features', 9);
+INSERT OR REPLACE INTO product_features (series, feature_name, feature_value, feature_category, sort_order) VALUES ('Ascent', 'Blending Programs', '✓', 'blender_features', 1);
+INSERT OR REPLACE INTO product_features (series, feature_name, feature_value, feature_category, sort_order) VALUES ('Ascent', 'Variable Speed Control', '✓', 'blender_features', 2);
+INSERT OR REPLACE INTO product_features (series, feature_name, feature_value, feature_category, sort_order) VALUES ('Ascent', 'Touch Buttons', '✓ (A3300, A3500)', 'blender_features', 3);
+INSERT OR REPLACE INTO product_features (series, feature_name, feature_value, feature_category, sort_order) VALUES ('Ascent', 'Pulse', '✓', 'blender_features', 4);
+INSERT OR REPLACE INTO product_features (series, feature_name, feature_value, feature_category, sort_order) VALUES ('Ascent', 'Digital Timer', '✓', 'blender_features', 5);
+INSERT OR REPLACE INTO product_features (series, feature_name, feature_value, feature_category, sort_order) VALUES ('Ascent', 'Self-Detect Technology', '✓', 'blender_features', 6);
+INSERT OR REPLACE INTO product_features (series, feature_name, feature_value, feature_category, sort_order) VALUES ('Ascent', 'Tamper Indicator', '—', 'blender_features', 7);
+INSERT OR REPLACE INTO product_features (series, feature_name, feature_value, feature_category, sort_order) VALUES ('Ascent', '+15 Second Button', '—', 'blender_features', 8);
+INSERT OR REPLACE INTO product_features (series, feature_name, feature_value, feature_category, sort_order) VALUES ('Ascent', 'Warranty', '10 Year', 'blender_features', 9);
+INSERT OR REPLACE INTO product_features (series, feature_name, feature_value, feature_category, sort_order) VALUES ('Propel', 'Blending Programs', '✓', 'blender_features', 1);
+INSERT OR REPLACE INTO product_features (series, feature_name, feature_value, feature_category, sort_order) VALUES ('Propel', 'Variable Speed Control', '✓', 'blender_features', 2);
+INSERT OR REPLACE INTO product_features (series, feature_name, feature_value, feature_category, sort_order) VALUES ('Propel', 'Touch Buttons', '—', 'blender_features', 3);
+INSERT OR REPLACE INTO product_features (series, feature_name, feature_value, feature_category, sort_order) VALUES ('Propel', 'Pulse', '✓', 'blender_features', 4);
+INSERT OR REPLACE INTO product_features (series, feature_name, feature_value, feature_category, sort_order) VALUES ('Propel', 'Digital Timer', '—', 'blender_features', 5);
+INSERT OR REPLACE INTO product_features (series, feature_name, feature_value, feature_category, sort_order) VALUES ('Propel', 'Self-Detect Technology', '—', 'blender_features', 6);
+INSERT OR REPLACE INTO product_features (series, feature_name, feature_value, feature_category, sort_order) VALUES ('Propel', 'Tamper Indicator', '—', 'blender_features', 7);
+INSERT OR REPLACE INTO product_features (series, feature_name, feature_value, feature_category, sort_order) VALUES ('Propel', '+15 Second Button', '—', 'blender_features', 8);
+INSERT OR REPLACE INTO product_features (series, feature_name, feature_value, feature_category, sort_order) VALUES ('Propel', 'Warranty', '5-7 Year', 'blender_features', 9);
+INSERT OR REPLACE INTO product_features (series, feature_name, feature_value, feature_category, sort_order) VALUES ('Legacy', 'Blending Programs', '✓', 'blender_features', 1);
+INSERT OR REPLACE INTO product_features (series, feature_name, feature_value, feature_category, sort_order) VALUES ('Legacy', 'Variable Speed Control', '✓', 'blender_features', 2);
+INSERT OR REPLACE INTO product_features (series, feature_name, feature_value, feature_category, sort_order) VALUES ('Legacy', 'Touch Buttons', '—', 'blender_features', 3);
+INSERT OR REPLACE INTO product_features (series, feature_name, feature_value, feature_category, sort_order) VALUES ('Legacy', 'Pulse', '✓ (750, 7500)', 'blender_features', 4);
+INSERT OR REPLACE INTO product_features (series, feature_name, feature_value, feature_category, sort_order) VALUES ('Legacy', 'Digital Timer', '—', 'blender_features', 5);
+INSERT OR REPLACE INTO product_features (series, feature_name, feature_value, feature_category, sort_order) VALUES ('Legacy', 'Self-Detect Technology', '—', 'blender_features', 6);
+INSERT OR REPLACE INTO product_features (series, feature_name, feature_value, feature_category, sort_order) VALUES ('Legacy', 'Tamper Indicator', '—', 'blender_features', 7);
+INSERT OR REPLACE INTO product_features (series, feature_name, feature_value, feature_category, sort_order) VALUES ('Legacy', '+15 Second Button', '—', 'blender_features', 8);
+INSERT OR REPLACE INTO product_features (series, feature_name, feature_value, feature_category, sort_order) VALUES ('Legacy', 'Warranty', '7 Year', 'blender_features', 9);
+INSERT OR REPLACE INTO product_features (series, feature_name, feature_value, feature_category, sort_order) VALUES ('Explorian', 'Blending Programs', '—', 'blender_features', 1);
+INSERT OR REPLACE INTO product_features (series, feature_name, feature_value, feature_category, sort_order) VALUES ('Explorian', 'Variable Speed Control', '✓', 'blender_features', 2);
+INSERT OR REPLACE INTO product_features (series, feature_name, feature_value, feature_category, sort_order) VALUES ('Explorian', 'Touch Buttons', '—', 'blender_features', 3);
+INSERT OR REPLACE INTO product_features (series, feature_name, feature_value, feature_category, sort_order) VALUES ('Explorian', 'Pulse', '✓', 'blender_features', 4);
+INSERT OR REPLACE INTO product_features (series, feature_name, feature_value, feature_category, sort_order) VALUES ('Explorian', 'Digital Timer', '—', 'blender_features', 5);
+INSERT OR REPLACE INTO product_features (series, feature_name, feature_value, feature_category, sort_order) VALUES ('Explorian', 'Self-Detect Technology', '—', 'blender_features', 6);
+INSERT OR REPLACE INTO product_features (series, feature_name, feature_value, feature_category, sort_order) VALUES ('Explorian', 'Tamper Indicator', '—', 'blender_features', 7);
+INSERT OR REPLACE INTO product_features (series, feature_name, feature_value, feature_category, sort_order) VALUES ('Explorian', '+15 Second Button', '—', 'blender_features', 8);
+INSERT OR REPLACE INTO product_features (series, feature_name, feature_value, feature_category, sort_order) VALUES ('Explorian', 'Warranty', '5 Year', 'blender_features', 9);
+
+-- Container Compatibility
+INSERT OR REPLACE INTO container_compatibility (series, container_name, compatible, notes) VALUES ('Ascent X', '48oz Stainless Steel', 1, NULL);
+INSERT OR REPLACE INTO container_compatibility (series, container_name, compatible, notes) VALUES ('Ascent', '48oz Stainless Steel', 1, NULL);
+INSERT OR REPLACE INTO container_compatibility (series, container_name, compatible, notes) VALUES ('Propel', '48oz Stainless Steel', 1, NULL);
+INSERT OR REPLACE INTO container_compatibility (series, container_name, compatible, notes) VALUES ('Legacy', '48oz Stainless Steel', 1, NULL);
+INSERT OR REPLACE INTO container_compatibility (series, container_name, compatible, notes) VALUES ('Explorian', '48oz Stainless Steel', 1, NULL);
+INSERT OR REPLACE INTO container_compatibility (series, container_name, compatible, notes) VALUES ('Ascent X', '48oz Aer™ Disc', 1, NULL);
+INSERT OR REPLACE INTO container_compatibility (series, container_name, compatible, notes) VALUES ('Ascent', '48oz Aer™ Disc', 1, NULL);
+INSERT OR REPLACE INTO container_compatibility (series, container_name, compatible, notes) VALUES ('Propel', '48oz Aer™ Disc', 1, NULL);
+INSERT OR REPLACE INTO container_compatibility (series, container_name, compatible, notes) VALUES ('Legacy', '48oz Aer™ Disc', 1, NULL);
+INSERT OR REPLACE INTO container_compatibility (series, container_name, compatible, notes) VALUES ('Explorian', '48oz Aer™ Disc', 1, NULL);
+INSERT OR REPLACE INTO container_compatibility (series, container_name, compatible, notes) VALUES ('Ascent X', 'Low-Profile 64oz w/ Self-Detect™', 1, NULL);
+INSERT OR REPLACE INTO container_compatibility (series, container_name, compatible, notes) VALUES ('Ascent', 'Low-Profile 64oz w/ Self-Detect™', 1, NULL);
+INSERT OR REPLACE INTO container_compatibility (series, container_name, compatible, notes) VALUES ('Propel', 'Low-Profile 64oz w/ Self-Detect™', 0, NULL);
+INSERT OR REPLACE INTO container_compatibility (series, container_name, compatible, notes) VALUES ('Legacy', 'Low-Profile 64oz w/ Self-Detect™', 0, NULL);
+INSERT OR REPLACE INTO container_compatibility (series, container_name, compatible, notes) VALUES ('Explorian', 'Low-Profile 64oz w/ Self-Detect™', 0, NULL);
+INSERT OR REPLACE INTO container_compatibility (series, container_name, compatible, notes) VALUES ('Ascent X', '48oz w/ Self-Detect™', 1, NULL);
+INSERT OR REPLACE INTO container_compatibility (series, container_name, compatible, notes) VALUES ('Ascent', '48oz w/ Self-Detect™', 1, NULL);
+INSERT OR REPLACE INTO container_compatibility (series, container_name, compatible, notes) VALUES ('Propel', '48oz w/ Self-Detect™', 0, NULL);
+INSERT OR REPLACE INTO container_compatibility (series, container_name, compatible, notes) VALUES ('Legacy', '48oz w/ Self-Detect™', 0, NULL);
+INSERT OR REPLACE INTO container_compatibility (series, container_name, compatible, notes) VALUES ('Explorian', '48oz w/ Self-Detect™', 0, NULL);
+INSERT OR REPLACE INTO container_compatibility (series, container_name, compatible, notes) VALUES ('Ascent X', 'Classic 64oz', 0, NULL);
+INSERT OR REPLACE INTO container_compatibility (series, container_name, compatible, notes) VALUES ('Ascent', 'Classic 64oz', 0, NULL);
+INSERT OR REPLACE INTO container_compatibility (series, container_name, compatible, notes) VALUES ('Propel', 'Classic 64oz', 1, NULL);
+INSERT OR REPLACE INTO container_compatibility (series, container_name, compatible, notes) VALUES ('Legacy', 'Classic 64oz', 1, NULL);
+INSERT OR REPLACE INTO container_compatibility (series, container_name, compatible, notes) VALUES ('Explorian', 'Classic 64oz', 0, NULL);
+INSERT OR REPLACE INTO container_compatibility (series, container_name, compatible, notes) VALUES ('Ascent X', 'Low-Profile 64oz', 0, NULL);
+INSERT OR REPLACE INTO container_compatibility (series, container_name, compatible, notes) VALUES ('Ascent', 'Low-Profile 64oz', 0, NULL);
+INSERT OR REPLACE INTO container_compatibility (series, container_name, compatible, notes) VALUES ('Propel', 'Low-Profile 64oz', 1, 'Propel 750 only');
+INSERT OR REPLACE INTO container_compatibility (series, container_name, compatible, notes) VALUES ('Legacy', 'Low-Profile 64oz', 1, NULL);
+INSERT OR REPLACE INTO container_compatibility (series, container_name, compatible, notes) VALUES ('Explorian', 'Low-Profile 64oz', 1, 'Some models');
+
+-- Attachment Compatibility
+INSERT OR REPLACE INTO attachment_compatibility (series, attachment_name, compatible, notes) VALUES ('Ascent X', 'Food Processor', 1, NULL);
+INSERT OR REPLACE INTO attachment_compatibility (series, attachment_name, compatible, notes) VALUES ('Ascent', 'Food Processor', 1, NULL);
+INSERT OR REPLACE INTO attachment_compatibility (series, attachment_name, compatible, notes) VALUES ('Propel', 'Food Processor', 0, NULL);
+INSERT OR REPLACE INTO attachment_compatibility (series, attachment_name, compatible, notes) VALUES ('Legacy', 'Food Processor', 0, NULL);
+INSERT OR REPLACE INTO attachment_compatibility (series, attachment_name, compatible, notes) VALUES ('Explorian', 'Food Processor', 0, NULL);
+INSERT OR REPLACE INTO attachment_compatibility (series, attachment_name, compatible, notes) VALUES ('Ascent X', 'Personal Cup Adapter', 0, 'Use Self-Detect cups');
+INSERT OR REPLACE INTO attachment_compatibility (series, attachment_name, compatible, notes) VALUES ('Ascent', 'Personal Cup Adapter', 0, 'Use Self-Detect cups');
+INSERT OR REPLACE INTO attachment_compatibility (series, attachment_name, compatible, notes) VALUES ('Propel', 'Personal Cup Adapter', 1, NULL);
+INSERT OR REPLACE INTO attachment_compatibility (series, attachment_name, compatible, notes) VALUES ('Legacy', 'Personal Cup Adapter', 1, NULL);
+INSERT OR REPLACE INTO attachment_compatibility (series, attachment_name, compatible, notes) VALUES ('Explorian', 'Personal Cup Adapter', 1, NULL);
+

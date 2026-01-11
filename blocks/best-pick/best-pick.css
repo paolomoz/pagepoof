@@ -1,0 +1,199 @@
+/**
+ * Best Pick Block Styles
+ *
+ * Hero-style "Our Top Pick" callout following Vitamix Design System.
+ * Visually matches the hero block design.
+ */
+
+/* Container reset - match hero-container */
+main .section.dark.best-pick-container {
+  padding: 25px 0;
+}
+
+.best-pick-container .best-pick-wrapper {
+  max-width: unset;
+  padding: 0;
+}
+
+.best-pick {
+  position: relative;
+  min-height: 400px;
+  max-width: var(--max-width-wide, 1400px);
+  margin: 0 auto;
+  padding: 0;
+}
+
+.best-pick-wrapper {
+  position: relative;
+}
+
+/* Badge - brand red with square corners */
+.best-pick-badge {
+  display: inline-block;
+  background: var(--color-brand-red, #c41230);
+  color: var(--color-white, #fff);
+  padding: 0.5rem 1.5rem;
+  font-size: 0.75rem;
+  font-weight: 500;
+  letter-spacing: 0.15em;
+  text-transform: uppercase;
+  border-radius: 0;
+  margin-bottom: var(--spacing-lg, 1.5rem);
+}
+
+/* Content container - single column, centered */
+.best-pick-container {
+  display: block;
+  max-width: 800px;
+  margin: 0 auto;
+  text-align: center;
+}
+
+/* Content column - centered text */
+.best-pick-content {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: var(--spacing-xl, 2rem) 0;
+}
+
+/* Eyebrow text - match hero eyebrow */
+.best-pick-eyebrow {
+  font-size: var(--font-size-xs, 0.75rem);
+  font-weight: var(--font-weight-semibold, 500);
+  letter-spacing: 0.15em;
+  text-transform: uppercase;
+  color: var(--color-brand-red, #c41230);
+  margin-bottom: var(--spacing-md, 1rem);
+}
+
+/* Headline - match hero h1 styling */
+.best-pick-headline {
+  font-size: var(--font-size-5xl, 3rem);
+  font-weight: var(--font-weight-light, 300);
+  letter-spacing: -0.025em;
+  color: var(--color-brand-dark, #1a1a1a);
+  margin-bottom: var(--spacing-lg, 1.5rem);
+  line-height: 1.1;
+}
+
+/* Rationale/body text - match hero p styling */
+.best-pick-rationale {
+  font-size: var(--font-size-lg, 1.125rem);
+  color: var(--color-charcoal, #333);
+  line-height: 1.7;
+  margin-bottom: var(--spacing-lg, 1.5rem);
+}
+
+/* Price and warranty details */
+.best-pick-details {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-md, 1rem);
+  margin-top: var(--spacing-sm, 0.5rem);
+}
+
+.best-pick-price {
+  font-size: var(--font-size-xl, 1.25rem);
+  font-weight: 500;
+  color: var(--color-brand-dark, #1a1a1a);
+}
+
+.best-pick-warranty {
+  font-size: var(--font-size-sm, 0.875rem);
+  color: var(--color-dark-gray, #666);
+}
+
+/* CTA button - primary button per design system */
+.best-pick-cta {
+  margin-top: var(--spacing-md, 1rem);
+}
+
+.best-pick-cta .button.primary {
+  display: inline-block;
+  background-color: var(--color-brand-red, #c41230);
+  color: var(--color-white, #fff);
+  padding: 0.75rem 2rem;
+  font-size: 0.875rem;
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  border-radius: 0;
+  border: none;
+  text-decoration: none;
+  transition: background-color var(--transition-normal, 0.2s ease);
+}
+
+.best-pick-cta .button.primary:hover {
+  background-color: var(--color-brand-red-dark, #a30f28);
+}
+
+/* Image column removed - best-pick is now text-only */
+
+/* Section variants */
+.section.highlight .best-pick {
+  background: transparent;
+}
+
+.section.accent .best-pick {
+  background: transparent;
+}
+
+.section.dark .best-pick {
+  background: transparent;
+}
+
+.section.dark .best-pick-badge {
+  background: var(--color-white, #fff);
+  color: var(--color-brand-red, #c41230);
+}
+
+.section.dark .best-pick-eyebrow {
+  color: #ff8a99;
+}
+
+.section.dark .best-pick-headline {
+  color: var(--color-white, #fff);
+}
+
+.section.dark .best-pick-rationale {
+  color: rgb(255 255 255 / 85%);
+}
+
+.section.dark .best-pick-price {
+  color: var(--color-white, #fff);
+}
+
+.section.dark .best-pick-warranty {
+  color: rgb(255 255 255 / 70%);
+}
+
+/* Desktop Styles */
+@media (width >= 900px) {
+  .best-pick-headline {
+    font-size: var(--font-size-hero, 4.5rem);
+  }
+}
+
+/* Tablet Styles */
+@media (width < 900px) {
+  .best-pick-headline {
+    font-size: var(--font-size-5xl, 3rem);
+  }
+}
+
+/* Mobile Styles */
+@media (width < 600px) {
+  .best-pick {
+    padding: var(--spacing-xl, 2rem) var(--spacing-md, 1rem);
+    min-height: auto;
+  }
+
+  .best-pick-content {
+    padding: var(--spacing-lg, 1.5rem) 0;
+  }
+
+  .best-pick-headline {
+    font-size: var(--font-size-4xl, 2.25rem);
+  }
+}

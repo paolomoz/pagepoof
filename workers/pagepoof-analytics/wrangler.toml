@@ -1,0 +1,58 @@
+name = "pagepoof-analytics"
+main = "src/index.ts"
+compatibility_date = "2024-01-01"
+compatibility_flags = ["nodejs_compat"]
+
+[vars]
+ENVIRONMENT = "development"
+ANALYSIS_COOLDOWN_MINUTES = "60"
+MAX_PAGES_PER_ANALYSIS = "100"
+
+# Required secrets (set via `wrangler secret put <NAME>`):
+# - ANTHROPIC_API_KEY: Claude API key for analysis synthesis
+# - GOOGLE_AI_API_KEY: Gemini API key for multi-agent analysis
+# - OPENAI_API_KEY: OpenAI API key for multi-agent analysis
+
+# KV namespace for analytics data (metrics, recent queries, analysis cache)
+[[kv_namespaces]]
+binding = "ANALYTICS"
+id = "83443075056742b29c8730624acda296"
+
+# Access to main API's cache for session data
+[[kv_namespaces]]
+binding = "CACHE"
+id = "952b8e54906544eeb271cfa2c41189f9"
+
+# D1 database for historical analytics (optional, for long-term storage)
+[[d1_databases]]
+binding = "DB"
+database_name = "pagepoof-db"
+database_id = "5b077fcc-8272-4360-874f-10fdbcb13652"
+
+# ============================================
+# SETUP INSTRUCTIONS
+# ============================================
+# 1. Create resources:
+#    wrangler kv:namespace create ANALYTICS
+#
+# 2. Update the placeholder IDs above:
+#    - ANALYTICS KV: from step 1
+#    - CACHE KV: same ID as pagepoof-api CACHE binding
+#    - DB: same ID as pagepoof-api DB binding
+#
+# 3. Set secrets:
+#    wrangler secret put ANTHROPIC_API_KEY
+#    wrangler secret put GOOGLE_AI_API_KEY
+#    wrangler secret put OPENAI_API_KEY
+#
+# 4. Deploy:
+#    wrangler deploy
+#
+# ============================================
+# KV KEYS STRUCTURE
+# ============================================
+# analytics:metrics          - Aggregated metrics (totalSessions, totalQueries, etc.)
+# analytics:recent-queries   - Last 100 queries with timestamps
+# analytics:top-queries      - Top 20 queries by count
+# analytics:last-analysis    - Cached analysis result
+# session:{id}               - Session data (in CACHE namespace)

@@ -1,0 +1,112 @@
+.recommended-products {
+  width: 100%;
+  min-height: calc(100dvw - (2 * var(--horizontal-spacing)));
+  padding: 0 var(--spacing-300);
+}
+
+.recommended-products ul {
+  gap: var(--spacing-300);
+  align-items: flex-start;
+}
+
+.recommended-products ul > li {
+  cursor: pointer;
+}
+
+.recommended-products .product-image img {
+  aspect-ratio: 1 / 1;
+  object-fit: cover;
+}
+
+.recommended-products .product-body {
+  width: 100%;
+  text-align: center;
+}
+
+.recommended-products .product-body h3 {
+  font-size: var(--title-size-s);
+}
+
+.recommended-products .product-body a {
+  text-decoration: none;
+}
+
+@media (width >= 600px) {
+  .recommended-products {
+    min-height: calc((100dvw / 2) - (2 * var(--horizontal-spacing)) - var(--spacing-300));
+  }
+
+  .recommended-products.carousel ul > li {
+    flex: 0 0 calc((100% - var(--spacing-300)) / 2);
+  }
+}
+
+@media (width >= 800px) {
+  .recommended-products {
+    min-height: calc((100dvw / 3) - (2 * var(--horizontal-spacing)) - (2 * var(--spacing-300)));
+  }
+
+  .recommended-products.carousel ul > li {
+    flex: 0 0 calc((100% - (2 * var(--spacing-300))) / 3);
+  }
+
+  .recommended-products .product-body {
+    text-align: left;
+  }
+
+  .recommended-products .product-body h3 {
+    font-size: var(--title-size-xxxl);
+  }
+
+  .recommended-products .product-image {
+    position: relative;
+    border-radius: var(--rounding-m);
+    overflow: hidden;
+  }
+
+  .recommended-products .product-image picture::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    background-color: transparent;
+    transition: background-color 0.3s;
+    z-index: 1;
+  }
+
+  .recommended-products .product-image picture::after {
+    content: 'Buy Now';
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    width: 100%;
+    padding: var(--spacing-100) var(--spacing-500);
+    background-color: var(--color-red);
+    color: var(--color-white);
+    font-size: var(--body-size-s);
+    text-align: center;
+    text-transform: uppercase;
+    opacity: 0;
+    transition: opacity 0.3s;
+    z-index: 2;
+  }
+
+  .recommended-products .product-image img {
+    object-fit: cover;
+    transition: transform 0.3s;
+  }
+
+  .recommended-products li:hover .product-image picture::before {
+    background-color: var(--overlay-charcoal-dark);
+  }
+
+  .recommended-products li:hover .product-image picture::after {
+    opacity: 1;
+  }
+
+  .recommended-products li:hover .product-image img {
+    transform: scale(1.05);
+  }
+}

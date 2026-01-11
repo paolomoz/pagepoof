@@ -1,0 +1,230 @@
+[
+  {
+    "sku": "ascent-x5-smartprep",
+    "name": "Ascent® X5 SmartPrep™ Kitchen System",
+    "series": "Ascent X",
+    "images": [
+      {
+        "filename": "ascent-x5-smartprep-1.png",
+        "url": "/assets/products/ascent-x5-smartprep-1.png",
+        "type": "primary"
+      }
+    ],
+    "status": "success"
+  },
+  {
+    "sku": "ascent-x4-gourmet-smartprep",
+    "name": "Ascent® X4 Gourmet SmartPrep™ Kitchen System",
+    "series": "Ascent X",
+    "images": [
+      {
+        "filename": "ascent-x4-gourmet-smartprep-1.png",
+        "url": "/assets/products/ascent-x4-gourmet-smartprep-1.png",
+        "type": "primary"
+      }
+    ],
+    "status": "success"
+  },
+  {
+    "sku": "ascent-x5-stainless",
+    "name": "Ascent® X5 with Stainless Steel Container",
+    "series": "Ascent X",
+    "images": [
+      {
+        "filename": "ascent-x5-stainless-1.png",
+        "url": "/assets/products/ascent-x5-stainless-1.png",
+        "type": "primary"
+      }
+    ],
+    "status": "success"
+  },
+  {
+    "sku": "ascent-x5",
+    "name": "Ascent® X5",
+    "series": "Ascent X",
+    "images": [
+      {
+        "filename": "ascent-x5-1.png",
+        "url": "/assets/products/ascent-x5-1.png",
+        "type": "primary"
+      },
+      {
+        "filename": "ascent-x5-2.png",
+        "url": "/assets/products/ascent-x5-2.png",
+        "type": "gallery"
+      },
+      {
+        "filename": "ascent-x5-3.png",
+        "url": "/assets/products/ascent-x5-3.png",
+        "type": "gallery"
+      }
+    ],
+    "status": "success"
+  },
+  {
+    "sku": "ascent-x4",
+    "name": "Ascent® X4",
+    "series": "Ascent X",
+    "images": [
+      {
+        "filename": "ascent-x4-1.png",
+        "url": "/assets/products/ascent-x4-1.png",
+        "type": "primary"
+      }
+    ],
+    "status": "success"
+  },
+  {
+    "sku": "ascent-x3",
+    "name": "Ascent® X3",
+    "series": "Ascent X",
+    "images": [
+      {
+        "filename": "ascent-x3-1.png",
+        "url": "/assets/products/ascent-x3-1.png",
+        "type": "primary"
+      }
+    ],
+    "status": "success"
+  },
+  {
+    "sku": "ascent-x2-smartprep",
+    "name": "Ascent® X2 SmartPrep™ Kitchen System",
+    "series": "Ascent X",
+    "images": [
+      {
+        "filename": "ascent-x2-smartprep-1.png",
+        "url": "/assets/products/ascent-x2-smartprep-1.png",
+        "type": "primary"
+      }
+    ],
+    "status": "success"
+  },
+  {
+    "sku": "ascent-x2",
+    "name": "Ascent® X2",
+    "series": "Ascent X",
+    "images": [
+      {
+        "filename": "ascent-x2-1.png",
+        "url": "/assets/products/ascent-x2-1.png",
+        "type": "primary"
+      }
+    ],
+    "status": "success"
+  },
+  {
+    "sku": "5200-stainless",
+    "name": "5200 + Stainless Steel Container",
+    "series": "Legacy",
+    "images": [
+      {
+        "filename": "5200-stainless-1.jpg",
+        "url": "/assets/products/5200-stainless-1.jpg",
+        "type": "primary"
+      }
+    ],
+    "status": "success"
+  },
+  {
+    "sku": "5200-legacy-bundle",
+    "name": "5200 Legacy Bundle",
+    "series": "Legacy",
+    "images": [
+      {
+        "filename": "5200-legacy-bundle-1.jpg",
+        "url": "/assets/products/5200-legacy-bundle-1.jpg",
+        "type": "primary"
+      }
+    ],
+    "status": "success"
+  },
+  {
+    "sku": "5200-standard",
+    "name": "5200 Standard - Getting Started",
+    "series": "Legacy",
+    "images": [
+      {
+        "filename": "5200-standard-1.jpg",
+        "url": "/assets/products/5200-standard-1.jpg",
+        "type": "primary"
+      }
+    ],
+    "status": "success"
+  },
+  {
+    "sku": "e310-pca-bundle",
+    "name": "E310 + Personal Cup Adapter",
+    "series": "Explorian",
+    "images": [
+      {
+        "filename": "e310-pca-bundle-1.jpg",
+        "url": "/assets/products/e310-pca-bundle-1.jpg",
+        "type": "primary"
+      }
+    ],
+    "status": "success"
+  },
+  {
+    "sku": "e310",
+    "name": "Explorian® E310",
+    "series": "Explorian",
+    "images": [
+      {
+        "filename": "e310-1.jpg",
+        "url": "/assets/products/e310-1.jpg",
+        "type": "primary"
+      },
+      {
+        "filename": "e310-2.jpg",
+        "url": "/assets/products/e310-2.jpg",
+        "type": "gallery"
+      },
+      {
+        "filename": "e310-3.jpg",
+        "url": "/assets/products/e310-3.jpg",
+        "type": "gallery"
+      }
+    ],
+    "status": "success"
+  },
+  {
+    "sku": "e320",
+    "name": "Explorian® E320",
+    "series": "Explorian",
+    "images": [
+      {
+        "filename": "e320-1.jpg",
+        "url": "/assets/products/e320-1.jpg",
+        "type": "primary"
+      }
+    ],
+    "status": "success"
+  },
+  {
+    "sku": "propel-750",
+    "name": "Propel Series 750",
+    "series": "Propel",
+    "images": [
+      {
+        "filename": "propel-750-1.jpg",
+        "url": "/assets/products/propel-750-1.jpg",
+        "type": "primary"
+      }
+    ],
+    "status": "success"
+  },
+  {
+    "sku": "propel-510",
+    "name": "Propel Series 510",
+    "series": "Propel",
+    "images": [
+      {
+        "filename": "propel-510-1.jpg",
+        "url": "/assets/products/propel-510-1.jpg",
+        "type": "primary"
+      }
+    ],
+    "status": "success"
+  }
+]

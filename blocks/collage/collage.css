@@ -1,0 +1,104 @@
+.collage {
+  display: flex;
+  flex-wrap: wrap;
+  grid-template-columns: repeat(2, 1fr);
+  gap: var(--spacing-60);
+}
+
+.collage > div {
+  flex: 1 1 calc((50% - var(--spacing-60)));
+  position: relative;
+  min-height: 153px;
+}
+
+.collage .span {
+  flex: 1 1 100%;
+}
+
+.collage .click {
+  cursor: pointer;
+}
+
+.collage .caption {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+}
+
+.collage .caption p {
+  margin: 0;
+}
+
+.collage .caption .button {
+  display: block;
+  width: 100%;
+  border-color: transparent;
+  border-radius: var(--rounding-m) var(--rounding-m) 0 0;
+  padding: 12px 20px;
+  background-color: var(--color-charcoal);
+  font-size: var(--detail-size-s);
+  font-weight: bold;
+  letter-spacing: var(--letter-spacing-s);
+  line-height: var(--line-height-xs);
+}
+
+.collage .vid-wrapper,
+.collage video {
+  width: 100%;
+}
+
+.collage video,
+.collage img {
+  display: block;
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  border-radius: var(--rounding-m);
+  object-fit: cover;
+}
+
+@media (width >= 800px) {
+  .collage {
+    display: flex;
+    flex-wrap: wrap;
+    grid-template-columns: repeat(2, 1fr);
+    gap: var(--spacing-80);
+  }
+
+  .collage > div {
+    min-height: 338px;
+    flex: 1 1 calc(33% - var(--spacing-80));
+    border-radius: var(--rounding-l);
+    overflow: hidden;
+  }
+
+  .collage > div:nth-child(4n + 2),
+  .collage > div:nth-child(4n + 3) {
+    flex: 0 1 66%;
+  }
+
+  .collage .caption {
+    position: absolute;
+    top: 0;
+    left: unset;
+  }
+
+  .collage .span {
+    flex: 1 1 calc((50% - var(--spacing-80))) !important;
+  }
+
+  .collage .caption .button {
+    width: unset;
+    max-width: 100%;
+    border-radius: 0 var(--rounding-l) 0 0;
+    text-align: left;
+  }
+
+  .collage video,
+  .collage img {
+    display: block;
+    border-radius: var(--rounding-l);
+  }
+}

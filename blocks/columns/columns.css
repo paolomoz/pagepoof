@@ -1,3 +1,15 @@
+p + .columns-container {
+  margin-top: var(--spacing-400);
+}
+
+.columns {
+  text-align: center;
+}
+
+.columns .button-wrapper {
+  justify-content: center;
+}
+
 .columns > div {
   display: flex;
   flex-direction: column;
@@ -11,23 +23,114 @@
   order: 1;
 }
 
-.columns > div > .columns-img-col {
+.columns > div > .column-img {
   order: 0;
 }
 
-.columns > div > .columns-img-col img {
+.columns > div > .column-img img {
   display: block;
 }
 
-@media (width >= 900px) {
+@media (width >= 800px) {
+  .columns {
+    text-align: unset;
+  }
+
+  .columns .button-wrapper {
+    justify-content: unset;
+  }
+
   .columns > div {
-    align-items: center;
     flex-direction: unset;
-    gap: 24px;
+    gap: var(--spacing-400);
   }
 
   .columns > div > div {
-    flex: 1;
     order: unset;
+    flex: 1;
   }
+
+  .columns > div > .column-button {
+    max-width: max-content;
+    align-self: flex-end;
+  }
+}
+
+/* icons variant */
+.columns.icons {
+  text-align: left;
+}
+
+.columns.icons > div {
+  flex-direction: row;
+  align-items: center;
+  gap: var(--spacing-400);
+}
+
+.columns.icons > div + div {
+  margin-top: var(--spacing-400);;
+}
+
+/* stylelint-disable-next-line no-descending-specificity */
+.columns.icons img {
+  width: 6em;
+  height: 6em;
+  border-radius: 50%;
+  object-fit: cover;
+}
+
+@media (width >= 800px) {
+  .columns.icons > div > div {
+    flex: unset;
+  }
+}
+
+/* icon list variant */
+/* stylelint-disable-next-line no-descending-specificity */
+.columns.icon-list > div {
+  align-items: center;
+}
+
+.columns.icon-list div > div {
+  width: 100%;
+  max-width: 30ch;
+}
+
+.columns.icon-list ul {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.columns.icon-list ul > li {
+  display: flex;
+  gap: 1ch;
+  align-items: center;
+}
+
+.columns.icon-list ul > li a {
+  text-decoration: none;
+}
+
+.columns.icon-list ul > li .img-wrapper {
+  display: inline-block;
+  width: 2em;
+}
+
+@media (width >= 800px) {
+  .columns.icon-list > div {
+    align-items: unset;
+    justify-content: center;
+  }
+}
+
+/* text center variant */
+.columns.text-center {
+  text-align: center;
+}
+
+
+.columns .icon-circle-1 svg, .columns .icon-circle-2 svg, .columns .icon-circle-3 svg {
+  height: 4em;
+  width: 4em;
 }

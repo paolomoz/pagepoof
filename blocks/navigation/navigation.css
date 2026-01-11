@@ -1,0 +1,218 @@
+main > .navigation-container.section {
+  position: sticky;
+  top: 0;
+  z-index: 2;
+}
+
+.hero-container + .navigation-container {
+  margin-top: 0;
+}
+
+.navigation-container > .navigation-wrapper {
+  margin: 0;
+  padding: 0;
+}
+
+.navigation {
+  padding: var(--spacing-100) var(--spacing-400);
+  background-color: var(--color-charcoal);
+  color: var(--color-white);
+  font-size: 0.875rem;
+}
+
+@media (width >= 800px) {
+  .navigation {
+    padding: 0 var(--spacing-400);
+  }
+}
+
+@media (width >= 1000px) {
+  .navigation {
+    padding: 0 var(--spacing-800);
+  }
+}
+
+.navigation > div {
+  display: grid;
+  grid-template-columns: 1fr min-content;
+  align-items: center;
+  gap: var(--spacing-100);
+  position: relative;
+}
+
+.navigation ul {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.navigation ul a:any-link {
+  color: var(--color-white);
+  text-decoration: none;
+  font-weight: normal;
+  cursor: pointer;
+}
+
+.navigation nav ul a:any-link {
+  display: block;
+  font-weight: 500;
+  letter-spacing: var(--letter-spacing-m);
+  text-transform: uppercase;
+}
+
+.navigation nav ul > li {
+  display: none;
+}
+
+.navigation nav ul > li[aria-current="true"] {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-60);
+}
+
+@media (width >= 800px) {
+  .navigation nav {
+    overflow: hidden;
+  }
+
+  .navigation nav ul {
+    position: relative;
+    display: flex;
+    gap: var(--spacing-700);
+    overflow-x: auto;
+    scroll-snap-type: x mandatory;
+    max-width: 100%;
+  }
+
+  .navigation nav .navigation-list-wrapper {
+    position: relative;
+  }
+
+  .navigation nav .navigation-list-wrapper::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(
+      to right,
+      var(--color-charcoal),
+      transparent var(--spacing-400),
+      transparent calc(100% - var(--spacing-400)),
+      var(--color-charcoal)
+    );
+    pointer-events: none;
+    transition: background 0.2s;
+  }
+
+  .navigation nav .navigation-list-wrapper[data-scroll="start"]::after {
+    background: linear-gradient(
+      to right,
+      transparent calc(100% - var(--spacing-400)),
+      var(--color-charcoal)
+    );
+  }
+
+  .navigation nav .navigation-list-wrapper[data-scroll="end"]::after {
+    background: linear-gradient(
+      to right,
+      var(--color-charcoal),
+      transparent var(--spacing-400)
+    );
+  }
+
+  .navigation nav ul::-webkit-scrollbar {
+    display: none;
+  }
+
+  .navigation nav ul a:any-link {
+    padding: var(--spacing-400) 0;
+  }
+
+  .navigation nav ul > li {
+    display: unset;
+    white-space: nowrap;
+    scroll-snap-align: start;
+  }
+
+  .navigation nav ul > li[aria-current="true"] {
+    position: relative;
+  }
+
+  .navigation nav ul > li[aria-current="true"]::before {
+    content: "";
+    position: absolute;
+    top: 0;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 26px;
+    height: 5px;
+    background-color: var(--color-red);
+  }
+}
+
+@media (width >= 345px) {
+  .navigation nav ul > li[aria-current="true"]::after {
+    content: "";
+    flex-shrink: 0;
+    display: inline-block;
+    transform: rotate(-45deg);
+    width: 14px;
+    height: 14px;
+    margin-top: 0.75em;
+    border: 3px solid transparent;
+    border-top-color: currentcolor;
+    border-right-color: currentcolor;
+    border-radius: var(--rounding-s);
+    transition: margin 0.2s, transform 0.2s;
+  }
+
+  .navigation nav ul > li[aria-expanded="true"]::after {
+    margin-top: 0;
+    margin-bottom: 0.75em;
+    transform: rotate(135deg);
+  }
+}
+
+@media (width >= 800px) {
+  .navigation nav ul > li[aria-current="true"]::after {
+    content: none;
+  }
+}
+
+.navigation .navigation-popover {
+  display: block;
+  position: absolute;
+  top: 100%;
+  left: 0;
+  right: 0;
+  background-color: var(--color-charcoal);
+  color: var(--color-white);
+}
+
+.navigation .navigation-popover[hidden] {
+  display: none;
+}
+
+/* stylelint-disable-next-line no-descending-specificity */
+.navigation .navigation-popover a {
+  display: block;
+  padding: var(--spacing-100) var(--spacing-400);
+}
+
+.navigation .navigation-popover a:focus-visible {
+  outline: 2px solid var(--color-gray);
+  outline-offset: -2px;
+  background-color: rgb(255 255 255 / 10%);
+}
+
+.navigation .navigation-popover a:hover {
+  color: var(--color-gray);
+  text-decoration: underline;
+}
+
+.navigation .navigation-popover ul > li {
+  border-top: 1px solid var(--color-gray-400);
+}
+
+.navigation .navigation-popover ul > li:last-child {
+  border-bottom: 1px solid var(--color-gray-400);
+}

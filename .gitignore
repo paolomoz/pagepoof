@@ -7,3 +7,7 @@ helix-importer-ui
 .DS_Store
 *.bak
 .idea
+.env
+
+workers/pagepoof-analytics/node_modules/*
+workers/pagepoof-api/node_modules/*
