@@ -95,7 +95,11 @@ export async function runPipeline(
       data: { step: 'retrieval', message: 'Gathering relevant information...' },
     });
 
-    const context = await retrieveContext(query, classification, { DB: env.DB });
+    const context = await retrieveContext(query, classification, {
+      DB: env.DB,
+      VECTORIZE: env.VECTORIZE,
+      AI: env.AI,
+    });
 
     await stream.write({
       event: 'retrieval',
