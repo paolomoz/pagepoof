@@ -1,0 +1,190 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+  <title>Pagepoof | AI-Powered Vitamix Experience</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="Discover personalized Vitamix recipes, products, and blending tips powered by AI. Ask anything about blenders, smoothies, soups, and more.">
+  <meta property="og:title" content="Pagepoof | AI-Powered Vitamix Experience">
+  <meta property="og:description" content="Discover personalized Vitamix recipes, products, and blending tips powered by AI.">
+  <script src="/scripts/aem.js" type="module"></script>
+  <script src="/scripts/scripts.js" type="module"></script>
+  <link rel="stylesheet" href="/styles/styles.css">
+  <link rel="stylesheet" href="/styles/generative.css">
+</head>
+
+<body>
+  <header></header>
+  <main>
+    <!-- Hero Section with Query Form -->
+    <div class="section hero">
+      <div class="default-content-wrapper">
+        <h1>What can we blend for you?</h1>
+        <p>Ask anything about Vitamix blenders, recipes, or healthy living. Our AI creates personalized pages just for you.</p>
+      </div>
+      <div class="query-form">
+        <div>
+          <div>Placeholder</div>
+          <div>Ask me anything about Vitamix...</div>
+        </div>
+        <div>
+          <div>Button</div>
+          <div>Generate</div>
+        </div>
+        <div>
+          <div>Examples</div>
+          <div>keto smoothie recipes, compare A3500 vs A2500, how to make hot soup in a blender, best blender for meal prep</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Generation Container (hidden until generation starts) -->
+    <div class="section generative-container" id="generative-output" style="display: none;">
+      <!-- Generated content will appear here -->
+    </div>
+
+    <!-- Features Section -->
+    <div class="section">
+      <div class="default-content-wrapper">
+        <h2>Powered by AI, Built for You</h2>
+        <p>Every page is uniquely generated based on your question, combining real Vitamix product data with intelligent content creation.</p>
+      </div>
+      <div class="cards">
+        <div>
+          <div>
+            <h3>1600+ Recipes</h3>
+            <p>From smoothies to soups, nut butters to frozen desserts. Our database includes the complete Vitamix recipe collection with dietary filters.</p>
+          </div>
+        </div>
+        <div>
+          <div>
+            <h3>100+ Products</h3>
+            <p>Full catalog of Vitamix blenders, containers, and accessories with real-time pricing and specifications.</p>
+          </div>
+        </div>
+        <div>
+          <div>
+            <h3>Smart Search</h3>
+            <p>Semantic search understands what you mean, not just what you type. Ask naturally and get relevant results.</p>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- How It Works Section -->
+    <div class="section highlight">
+      <div class="default-content-wrapper">
+        <h2>How It Works</h2>
+        <ol>
+          <li><strong>Ask a Question</strong> - Type anything about Vitamix products, recipes, or blending techniques</li>
+          <li><strong>AI Understands</strong> - We classify your intent and search our knowledge base</li>
+          <li><strong>Page Generated</strong> - A custom page streams in real-time with relevant content</li>
+          <li><strong>Explore More</strong> - Click through to products, recipes, or ask follow-up questions</li>
+        </ol>
+      </div>
+    </div>
+
+    <!-- Example Queries Section -->
+    <div class="section">
+      <div class="default-content-wrapper">
+        <h2>Try These Queries</h2>
+      </div>
+      <div class="columns">
+        <div>
+          <div>
+            <h3>Recipes</h3>
+            <ul>
+              <li>vegan breakfast smoothies</li>
+              <li>high protein post-workout shakes</li>
+              <li>dairy-free ice cream recipes</li>
+              <li>hot soups for winter</li>
+            </ul>
+          </div>
+        </div>
+        <div>
+          <div>
+            <h3>Products</h3>
+            <ul>
+              <li>best vitamix for beginners</li>
+              <li>compare Ascent vs Explorian series</li>
+              <li>blenders under $400</li>
+              <li>food processor attachments</li>
+            </ul>
+          </div>
+        </div>
+        <div>
+          <div>
+            <h3>How-To</h3>
+            <ul>
+              <li>how to make nut butter</li>
+              <li>blending hot liquids safely</li>
+              <li>cleaning your vitamix</li>
+              <li>which container size to choose</li>
+            </ul>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- CTA Section -->
+    <div class="section highlight">
+      <div class="default-content-wrapper">
+        <h2>Ready to Blend?</h2>
+        <p>Start with any question above or type your own. Your personalized Vitamix experience awaits.</p>
+        <p><a href="#" class="button primary" onclick="document.querySelector('.query-form input').focus(); return false;">Ask a Question</a></p>
+      </div>
+    </div>
+
+    <!-- Analytics Link -->
+    <div class="section">
+      <div class="default-content-wrapper" style="text-align: center;">
+        <p><small>Developer tools: <a href="/agent-self-improve">AI Self-Improvement Dashboard</a></small></p>
+      </div>
+    </div>
+  </main>
+  <footer></footer>
+
+  <!-- Generative page handler -->
+  <script type="module">
+    import { generatePage } from '/scripts/generative.js';
+
+    // Check for generation query params
+    const params = new URLSearchParams(window.location.search);
+    const query = params.get('generate') || params.get('experiment') || params.get('fast');
+
+    if (query) {
+      // Hide static content, show generation container
+      document.querySelectorAll('main > .section:not(.generative-container)').forEach(s => {
+        s.style.display = 'none';
+      });
+
+      const container = document.getElementById('generative-output');
+      container.style.display = 'block';
+
+      // Start generation
+      generatePage(query, container, {
+        onProgress: (data) => {
+          console.log('Progress:', data);
+        },
+        onBlock: (data) => {
+          console.log('Block:', data.name);
+        },
+        onComplete: (data) => {
+          console.log('Complete:', data);
+          // Update page title and URL
+          if (data.title) {
+            document.title = `${data.title} | Pagepoof`;
+          }
+          if (data.slug) {
+            history.replaceState({}, '', `/${data.slug}`);
+          }
+        },
+        onError: (error) => {
+          console.error('Generation error:', error);
+        }
+      });
+    }
+  </script>
+</body>
+
+</html>

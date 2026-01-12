@@ -273,8 +273,193 @@ img.image-error::after {
   min-height: 50vh;
 }
 
+/* Homepage Hero Section */
+.section.hero {
+  background: linear-gradient(135deg, #1a1a1a 0%, #2d2d2d 100%);
+  color: white;
+  padding: 80px 20px 60px;
+  text-align: center;
+  min-height: 50vh;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+}
+
+.section.hero h1 {
+  font-size: 3rem;
+  font-weight: 700;
+  margin-bottom: 1rem;
+  background: linear-gradient(90deg, #fff, #ccc);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+.section.hero p {
+  font-size: 1.25rem;
+  color: #b0b0b0;
+  max-width: 600px;
+  margin: 0 auto 2rem;
+}
+
+.section.hero .query-form {
+  max-width: 700px;
+  width: 100%;
+}
+
+.section.hero .query-form input[type="text"] {
+  background: rgba(255, 255, 255, 0.95);
+  font-size: 1.1rem;
+  padding: 1rem 1.25rem;
+}
+
+.section.hero .query-form button[type="submit"] {
+  background: #c00;
+  font-size: 1.1rem;
+  padding: 1rem 2rem;
+}
+
+.section.hero .query-form button[type="submit"]:hover {
+  background: #a00;
+}
+
+.section.hero .query-form-examples button {
+  background: rgba(255, 255, 255, 0.1);
+  border-color: rgba(255, 255, 255, 0.2);
+  color: #ccc;
+}
+
+.section.hero .query-form-examples button:hover {
+  background: rgba(255, 255, 255, 0.2);
+  border-color: rgba(255, 255, 255, 0.3);
+  color: white;
+}
+
+.section.hero .examples-label {
+  color: #888;
+}
+
+/* Highlight section */
+.section.highlight {
+  background: #f8f8f8;
+  padding: 60px 20px;
+  text-align: center;
+}
+
+.section.highlight h2 {
+  margin-bottom: 1.5rem;
+}
+
+.section.highlight ol {
+  text-align: left;
+  max-width: 600px;
+  margin: 0 auto 2rem;
+}
+
+.section.highlight ol li {
+  margin-bottom: 1rem;
+  line-height: 1.6;
+}
+
+/* Cards grid */
+.cards {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: 2rem;
+  padding: 2rem;
+  max-width: 1200px;
+  margin: 0 auto;
+}
+
+.cards > div {
+  background: white;
+  border-radius: 12px;
+  padding: 2rem;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+  transition: transform 0.2s, box-shadow 0.2s;
+}
+
+.cards > div:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12);
+}
+
+.cards h3 {
+  color: #c00;
+  margin-bottom: 0.75rem;
+}
+
+/* Columns grid */
+.columns {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+  gap: 2rem;
+  padding: 2rem;
+  max-width: 1000px;
+  margin: 0 auto;
+}
+
+.columns h3 {
+  color: #333;
+  margin-bottom: 1rem;
+  border-bottom: 2px solid #c00;
+  padding-bottom: 0.5rem;
+}
+
+.columns ul {
+  list-style: none;
+  padding: 0;
+}
+
+.columns li {
+  padding: 0.5rem 0;
+  color: #555;
+  cursor: pointer;
+  transition: color 0.2s;
+}
+
+.columns li:hover {
+  color: #c00;
+}
+
+/* Primary button */
+.button.primary {
+  display: inline-block;
+  background: #c00;
+  color: white;
+  padding: 1rem 2rem;
+  border-radius: 8px;
+  text-decoration: none;
+  font-weight: 500;
+  transition: background 0.2s, transform 0.1s;
+}
+
+.button.primary:hover {
+  background: #a00;
+  transform: translateY(-2px);
+}
+
+/* Generative container */
+.generative-container {
+  min-height: 80vh;
+  padding: 2rem;
+}
+
 /* Responsive adjustments */
 @media (max-width: 768px) {
+  .section.hero {
+    padding: 60px 20px 40px;
+  }
+
+  .section.hero h1 {
+    font-size: 2rem;
+  }
+
+  .section.hero p {
+    font-size: 1rem;
+  }
+
   .shimmer-hero {
     height: 300px;
   }
