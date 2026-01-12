@@ -18,6 +18,7 @@ export interface ClassificationResult {
   isAccessibilityQuery: boolean;
   isNoiseQuery: boolean;
   isMedicalQuery: boolean;
+  isAllergyQuery: boolean;
   budget?: number;  // Extracted budget amount in dollars
 }
 
@@ -67,6 +68,17 @@ const BUDGET_PATTERNS = [
   /\b(budget|afford|cheap|broke|expensive)/i,
   /\b(entry.?level|starter|beginner)/i,
   /\b(can('t|not)|don('t|not))\s*(afford|spend)/i,
+];
+
+// Allergy patterns - boost product classification for container recommendations
+const ALLERGY_PATTERNS = [
+  /\b(allerg(y|ies|ic|en))/i,
+  /\b(nut|peanut|tree.?nut)\s*(free|allerg)/i,
+  /\b(dairy|milk|lactose)\s*(free|allerg|intoleran)/i,
+  /\b(gluten)\s*(free|allerg|intoleran|sensitiv)/i,
+  /\b(cross.?contaminat)/i,
+  /\b(separate|dedicated)\s*(container|bowl|blade)/i,
+  /\b(food\s*)?sensitiv(e|ity|ities)/i,
 ];
 
 // Strong indicators get 2.0 weight (vs 0.6-1.0 for patterns)
@@ -238,11 +250,12 @@ export function classifyQuery(query: string): ClassificationResult {
   const isAccessibilityQuery = ACCESSIBILITY_PATTERNS.some(p => p.test(normalizedQuery));
   const isNoiseQuery = NOISE_PATTERNS.some(p => p.test(normalizedQuery));
   const isMedicalQuery = MEDICAL_PATTERNS.some(p => p.test(normalizedQuery));
+  const isAllergyQuery = ALLERGY_PATTERNS.some(p => p.test(normalizedQuery));
 
   // Extract budget if mentioned
   const budget = extractBudget(query);
 
-  // Boost product score for accessibility, noise, and budget queries
+  // Boost product score for accessibility, noise, medical, allergy, and budget queries
   if (isAccessibilityQuery) {
     scores.product += 2.0;
   }
@@ -252,6 +265,9 @@ export function classifyQuery(query: string): ClassificationResult {
   if (isMedicalQuery) {
     scores.product += 1.5;
     scores.support += 1.0;
+  }
+  if (isAllergyQuery) {
+    scores.product += 1.5;  // Boost for container recommendations
   }
   if (budget !== undefined) {
     scores.product += 1.5;
@@ -308,6 +324,7 @@ export function classifyQuery(query: string): ClassificationResult {
     isAccessibilityQuery,
     isNoiseQuery,
     isMedicalQuery,
+    isAllergyQuery,
     budget,
   };
 }
