@@ -3,7 +3,7 @@
  * Self-improvement system with multi-agent analysis
  */
 
-import { runMultiAgentAnalysis, synthesizeAnalyses, type PageAnalysis, type Suggestion } from './agents';
+import { runMultiAgentAnalysis, synthesizeAnalyses, type PageAnalysis, type Suggestion, type MultiAgentResult } from './agents';
 
 export interface Env {
   ANALYTICS: KVNamespace;
@@ -43,6 +43,12 @@ interface BatchAnalysisResult {
   exemplaryPages: Array<{ url: string; query: string; reason: string }>;
   problematicPages: Array<{ url: string; query: string; reason: string }>;
   pagesAnalyzed: number;
+  pagesWithPartialAnalysis?: number; // Pages where not all agents succeeded
+  agentReliability?: {
+    claude: number; // Success rate 0-100
+    gemini: number;
+    openai: number;
+  };
 }
 
 export default {
@@ -274,7 +280,13 @@ async function handleAnalyze(request: Request, env: Env): Promise<Response> {
 
   // Analyze up to 20 recent pages
   const pagesToAnalyze = recentQueries.slice(0, 20);
-  const pageAnalyses: Array<{ query: string; url: string; analysis: PageAnalysis }> = [];
+  const pageAnalyses: Array<{
+    query: string;
+    url: string;
+    analysis: PageAnalysis;
+    agentStatus?: MultiAgentResult['agentStatus'];
+    partialSuccess?: boolean;
+  }> = [];
 
   for (const page of pagesToAnalyze) {
     const pageUrl = page.pageUrl || page.generatedPageUrl;
@@ -289,16 +301,28 @@ async function handleAnalyze(request: Request, env: Env): Promise<Response> {
       const pageContent = extractMainContent(pageHtml);
 
       // Run multi-agent analysis
-      const { analyses, successCount } = await runMultiAgentAnalysis(
+      const result = await runMultiAgentAnalysis(
         pageContent,
         page.query,
         pageUrl,
         env
       );
 
-      if (successCount > 0) {
-        const synthesis = await synthesizeAnalyses(analyses, pageContent, env);
-        pageAnalyses.push({ query: page.query, url: pageUrl, analysis: synthesis });
+      // Accept partial results (at least 1 agent succeeded)
+      if (result.successCount > 0) {
+        const synthesis = await synthesizeAnalyses(result.analyses, pageContent, env);
+        pageAnalyses.push({
+          query: page.query,
+          url: pageUrl,
+          analysis: synthesis,
+          agentStatus: result.agentStatus,
+          partialSuccess: result.partialSuccess,
+        });
+        if (result.partialSuccess) {
+          console.log(`Page ${pageUrl}: partial success (${result.successCount}/3 agents)`);
+        }
+      } else {
+        console.warn(`Page ${pageUrl}: all agents failed`, result.agentStatus);
       }
     } catch (error) {
       console.error('Error analyzing page:', pageUrl, error);
@@ -358,6 +382,19 @@ async function handleAnalyze(request: Request, env: Env): Promise<Response> {
 
   const count = pageAnalyses.length;
 
+  // Calculate agent reliability from all analyzed pages
+  const agentSuccessCounts = { claude: 0, gemini: 0, openai: 0 };
+  let pagesWithPartialAnalysis = 0;
+
+  for (const { agentStatus, partialSuccess } of pageAnalyses) {
+    if (agentStatus) {
+      if (agentStatus.claude === 'success') agentSuccessCounts.claude++;
+      if (agentStatus.gemini === 'success') agentSuccessCounts.gemini++;
+      if (agentStatus.openai === 'success') agentSuccessCounts.openai++;
+    }
+    if (partialSuccess) pagesWithPartialAnalysis++;
+  }
+
   // Build batch result
   const batchResult: BatchAnalysisResult = {
     timestamp: Date.now(),
@@ -377,6 +414,12 @@ async function handleAnalyze(request: Request, env: Env): Promise<Response> {
     exemplaryPages: exemplaryPages.slice(0, 3),
     problematicPages: problematicPages.slice(0, 3),
     pagesAnalyzed: count,
+    pagesWithPartialAnalysis,
+    agentReliability: {
+      claude: Math.round((agentSuccessCounts.claude / count) * 100),
+      gemini: Math.round((agentSuccessCounts.gemini / count) * 100),
+      openai: Math.round((agentSuccessCounts.openai / count) * 100),
+    },
   };
 
   // Add Claude Code prompts to suggestions
@@ -429,12 +472,14 @@ async function handleAnalyzePage(request: Request, env: Env): Promise<Response> 
     const pageContent = extractMainContent(pageHtml);
 
     // Run multi-agent analysis
-    const { analyses, successCount } = await runMultiAgentAnalysis(pageContent, query, pageUrl, env);
+    const result = await runMultiAgentAnalysis(pageContent, query, pageUrl, env);
+    const { analyses, successCount, agentStatus, partialSuccess } = result;
 
     if (successCount === 0) {
       const errors = analyses.map(a => `${a.model}: ${a.error || 'unknown error'}`);
       return new Response(JSON.stringify({
         error: 'All analysis agents failed',
+        agentStatus,
         agentErrors: errors,
       }), {
         status: 500,
@@ -442,7 +487,7 @@ async function handleAnalyzePage(request: Request, env: Env): Promise<Response> 
       });
     }
 
-    // Synthesize results
+    // Synthesize results (works with partial success)
     const analysis = await synthesizeAnalyses(analyses, pageContent, env);
 
     // Cache result (24 hours)
@@ -450,7 +495,16 @@ async function handleAnalyzePage(request: Request, env: Env): Promise<Response> 
       expirationTtl: 24 * 60 * 60,
     });
 
-    return new Response(JSON.stringify({ cached: false, analysis }), {
+    // Include agent status metadata in response
+    return new Response(JSON.stringify({
+      cached: false,
+      analysis,
+      agentStatus,
+      successfulAgents: successCount,
+      totalAgents: 3,
+      partialSuccess,
+      warning: partialSuccess ? `Only ${successCount}/3 agents succeeded` : undefined,
+    }), {
       headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' },
     });
   } catch (error) {

@@ -14,6 +14,7 @@ export interface ModelAnalysis {
   success: boolean;
   analysis?: PageAnalysis;
   error?: string;
+  parseError?: boolean; // True if API succeeded but JSON parsing failed
 }
 
 export interface PageAnalysis {
@@ -87,15 +88,27 @@ Return ONLY valid JSON (no markdown):
   ]
 }`;
 
+export interface MultiAgentResult {
+  analyses: ModelAnalysis[];
+  successCount: number;
+  totalAgents: number;
+  agentStatus: {
+    claude: 'success' | 'api_error' | 'parse_error';
+    gemini: 'success' | 'api_error' | 'parse_error';
+    openai: 'success' | 'api_error' | 'parse_error';
+  };
+  partialSuccess: boolean; // True if at least 1 but not all agents succeeded
+}
+
 /**
- * Run multi-agent analysis in parallel
+ * Run multi-agent analysis in parallel with detailed status reporting
  */
 export async function runMultiAgentAnalysis(
   pageContent: string,
   query: string,
   pageUrl: string,
   env: Env
-): Promise<{ analyses: ModelAnalysis[]; successCount: number }> {
+): Promise<MultiAgentResult> {
   const prompt = buildAnalysisPrompt(pageContent, query, pageUrl);
 
   const results = await Promise.all([
@@ -105,8 +118,28 @@ export async function runMultiAgentAnalysis(
   ]);
 
   const successCount = results.filter(r => r.success).length;
+  const totalAgents = results.length;
 
-  return { analyses: results, successCount };
+  // Build detailed status for each agent
+  const getStatus = (r: ModelAnalysis): 'success' | 'api_error' | 'parse_error' => {
+    if (r.success) return 'success';
+    if (r.parseError) return 'parse_error';
+    return 'api_error';
+  };
+
+  const agentStatus = {
+    claude: getStatus(results.find(r => r.model === 'claude')!),
+    gemini: getStatus(results.find(r => r.model === 'gemini')!),
+    openai: getStatus(results.find(r => r.model === 'openai')!),
+  };
+
+  return {
+    analyses: results,
+    successCount,
+    totalAgents,
+    agentStatus,
+    partialSuccess: successCount > 0 && successCount < totalAgents,
+  };
 }
 
 /**
@@ -147,7 +180,8 @@ async function callClaude(prompt: string, env: Env): Promise<ModelAnalysis> {
     });
 
     if (!response.ok) {
-      throw new Error(`Claude API error: ${response.status}`);
+      const errorBody = await response.text().catch(() => 'unknown');
+      throw new Error(`Claude API error ${response.status}: ${errorBody.slice(0, 200)}`);
     }
 
     const data = await response.json() as {
@@ -155,7 +189,12 @@ async function callClaude(prompt: string, env: Env): Promise<ModelAnalysis> {
     };
 
     const text = data.content[0]?.text || '';
-    const analysis = parseJsonResponse(text);
+    const { success: parseSuccess, analysis } = parseJsonResponse(text);
+
+    if (!parseSuccess) {
+      console.warn('Claude response parsing failed, using fallback');
+      return { model: 'claude', success: false, parseError: true, error: 'JSON parsing failed', analysis };
+    }
 
     return { model: 'claude', success: true, analysis };
   } catch (error) {
@@ -165,12 +204,12 @@ async function callClaude(prompt: string, env: Env): Promise<ModelAnalysis> {
 }
 
 /**
- * Call Gemini Pro for analysis
+ * Call Gemini for analysis
  */
 async function callGemini(prompt: string, env: Env): Promise<ModelAnalysis> {
   try {
     const response = await fetch(
-      `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-pro:generateContent?key=${env.GOOGLE_AI_API_KEY}`,
+      `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${env.GOOGLE_AI_API_KEY}`,
       {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -185,7 +224,8 @@ async function callGemini(prompt: string, env: Env): Promise<ModelAnalysis> {
     );
 
     if (!response.ok) {
-      throw new Error(`Gemini API error: ${response.status}`);
+      const errorBody = await response.text().catch(() => 'unknown');
+      throw new Error(`Gemini API error ${response.status}: ${errorBody.slice(0, 200)}`);
     }
 
     const data = await response.json() as {
@@ -193,7 +233,12 @@ async function callGemini(prompt: string, env: Env): Promise<ModelAnalysis> {
     };
 
     const text = data.candidates?.[0]?.content?.parts?.[0]?.text || '';
-    const analysis = parseJsonResponse(text);
+    const { success: parseSuccess, analysis } = parseJsonResponse(text);
+
+    if (!parseSuccess) {
+      console.warn('Gemini response parsing failed, using fallback');
+      return { model: 'gemini', success: false, parseError: true, error: 'JSON parsing failed', analysis };
+    }
 
     return { model: 'gemini', success: true, analysis };
   } catch (error) {
@@ -222,7 +267,8 @@ async function callOpenAI(prompt: string, env: Env): Promise<ModelAnalysis> {
     });
 
     if (!response.ok) {
-      throw new Error(`OpenAI API error: ${response.status}`);
+      const errorBody = await response.text().catch(() => 'unknown');
+      throw new Error(`OpenAI API error ${response.status}: ${errorBody.slice(0, 200)}`);
     }
 
     const data = await response.json() as {
@@ -230,7 +276,12 @@ async function callOpenAI(prompt: string, env: Env): Promise<ModelAnalysis> {
     };
 
     const text = data.choices?.[0]?.message?.content || '';
-    const analysis = parseJsonResponse(text);
+    const { success: parseSuccess, analysis } = parseJsonResponse(text);
+
+    if (!parseSuccess) {
+      console.warn('OpenAI response parsing failed, using fallback');
+      return { model: 'openai', success: false, parseError: true, error: 'JSON parsing failed', analysis };
+    }
 
     return { model: 'openai', success: true, analysis };
   } catch (error) {
@@ -240,36 +291,92 @@ async function callOpenAI(prompt: string, env: Env): Promise<ModelAnalysis> {
 }
 
 /**
- * Parse JSON from model response
+ * Parse JSON from model response with multiple fallback strategies
+ * Returns { success, analysis } to distinguish parse success from failure
  */
-function parseJsonResponse(text: string): PageAnalysis {
-  // Try direct parse
+function parseJsonResponse(text: string): { success: boolean; analysis: PageAnalysis } {
+  // Strategy 1: Direct parse
   try {
-    return JSON.parse(text);
+    const parsed = JSON.parse(text);
+    if (isValidAnalysis(parsed)) {
+      return { success: true, analysis: parsed };
+    }
   } catch {
-    // Extract JSON from response
-    const jsonMatch = text.match(/\{[\s\S]*\}/);
-    if (jsonMatch) {
-      try {
-        return JSON.parse(jsonMatch[0]);
-      } catch {
-        // Continue to fallback
+    // Continue to next strategy
+  }
+
+  // Strategy 2: Extract JSON object from markdown code block
+  const codeBlockMatch = text.match(/```(?:json)?\s*([\s\S]*?)```/);
+  if (codeBlockMatch) {
+    try {
+      const parsed = JSON.parse(codeBlockMatch[1].trim());
+      if (isValidAnalysis(parsed)) {
+        return { success: true, analysis: parsed };
+      }
+    } catch {
+      // Continue to next strategy
+    }
+  }
+
+  // Strategy 3: Find first complete JSON object
+  const jsonMatch = text.match(/\{[\s\S]*\}/);
+  if (jsonMatch) {
+    try {
+      const parsed = JSON.parse(jsonMatch[0]);
+      if (isValidAnalysis(parsed)) {
+        return { success: true, analysis: parsed };
+      }
+    } catch {
+      // Continue to next strategy
+    }
+  }
+
+  // Strategy 4: Try to fix common JSON issues (trailing commas, etc.)
+  try {
+    const cleaned = text
+      .replace(/,\s*}/g, '}')  // Remove trailing commas before }
+      .replace(/,\s*]/g, ']')  // Remove trailing commas before ]
+      .replace(/'/g, '"');     // Replace single quotes with double
+    const jsonMatch2 = cleaned.match(/\{[\s\S]*\}/);
+    if (jsonMatch2) {
+      const parsed = JSON.parse(jsonMatch2[0]);
+      if (isValidAnalysis(parsed)) {
+        return { success: true, analysis: parsed };
       }
     }
+  } catch {
+    // All strategies failed
+  }
 
-    // Return default analysis
-    return {
-      overallScore: 50,
-      contentScore: 50,
-      layoutScore: 50,
-      conversionScore: 50,
+  // Return failure with default structure
+  return {
+    success: false,
+    analysis: {
+      overallScore: 0,
+      contentScore: 0,
+      layoutScore: 0,
+      conversionScore: 0,
       summary: 'Unable to parse analysis response',
       strengths: [],
       improvements: [],
       topIssues: ['Analysis parsing failed'],
       suggestions: [],
-    };
-  }
+    },
+  };
+}
+
+/**
+ * Validate that parsed object has required PageAnalysis fields
+ */
+function isValidAnalysis(obj: unknown): obj is PageAnalysis {
+  if (!obj || typeof obj !== 'object') return false;
+  const a = obj as Record<string, unknown>;
+  return (
+    typeof a.overallScore === 'number' &&
+    typeof a.contentScore === 'number' &&
+    typeof a.layoutScore === 'number' &&
+    typeof a.conversionScore === 'number'
+  );
 }
 
 /**
