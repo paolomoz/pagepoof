@@ -148,6 +148,49 @@ Generate structured content atoms based on the user query and provided context.
 7. For support queries, prioritize faq_set or steps atoms
 8. Include imageHint for atoms that should have images (e.g., "vitamix ascent x5 slate gray blender on kitchen counter")
 
+## Special Query Handling
+
+When "Special Context" is provided, adapt your response accordingly:
+
+**ACCESSIBILITY NEED**:
+- Highlight products with touchscreen controls, preset programs, or simple operation
+- Mention features like large buttons, easy-clean design, lightweight containers
+- Use reassuring, supportive language
+
+**NOISE CONCERN**:
+- Include decibel ratings in product comparisons when available
+- Recommend quieter models (lower dB ratings)
+- Acknowledge the concern and provide practical tips (using thick smoothie bases, blending briefly)
+
+**MEDICAL/THERAPY CONTEXT**:
+- Use warm, empathetic tone - acknowledge their situation without dwelling on difficulties
+- Start with a supportive statement like "We understand how important safe, easy food preparation is for your needs"
+- Focus on texture capabilities (smooth purees, consistent blends) that can help with dysphagia or medical dietary requirements
+- Highlight safety features and ease of cleaning
+- Include relevant recipes for texture-modified diets (purees, smoothies, soups)
+- Avoid clinical language; use warm, encouraging words
+- Mention that Vitamix is trusted by therapists and healthcare professionals
+
+**BUDGET CONSTRAINT**:
+- If products exist within budget: prioritize them in recommendations
+- If products are close to budget (within 20%): mention them as options
+- If no products meet budget: be honest, suggest certified reconditioned options or payment plans
+- Never hide pricing information - be transparent
+
+**PRICE TRANSPARENCY** (apply to all product queries):
+- Always show prices clearly in product comparisons
+- Explain the price range upfront: "Vitamix blenders range from $XX (reconditioned) to $XXX (premium)"
+- For higher-priced items, explain the value: longer warranty, professional-grade motor, multi-decade lifespan
+- Mention certified reconditioned as a legitimate option (same warranty, lower price)
+- If user seems price-sensitive, lead with affordable options without making assumptions
+
+**COMMERCIAL VS CONSUMER PRODUCTS**:
+- The "Quiet One" and drink machine blenders are COMMERCIAL products for restaurants/juice bars only
+- If user asks about commercial products for home use, explain they're designed for high-volume businesses
+- Recommend equivalent consumer models instead (e.g., Ascent series for home use)
+- Commercial products: higher price, higher capacity, designed for continuous use
+- Consumer products: home warranties, residential power, designed for occasional use
+
 ## Output Format
 
 Return ONLY valid JSON with this structure:
@@ -222,6 +265,78 @@ export async function generateContentAtoms(
 }
 
 /**
+ * Select a recommended product based on user needs
+ */
+function selectRecommendedProduct(
+  context: RagContext,
+  classification: ClassificationResult
+): { product: RagContext['products'][0]; reason: string } | null {
+  if (context.products.length === 0) return null;
+
+  const products = context.products;
+
+  // For accessibility queries: recommend products with touchscreen/presets
+  if (classification.isAccessibilityQuery) {
+    const touchscreenModels = products.filter(p =>
+      p.specs?.touchscreen === 'Yes' || p.specs?.programs?.includes('preset')
+    );
+    if (touchscreenModels.length > 0) {
+      return {
+        product: touchscreenModels[0],
+        reason: 'Features touchscreen controls and preset programs for easy one-touch operation',
+      };
+    }
+  }
+
+  // For noise queries: recommend quietest model
+  if (classification.isNoiseQuery) {
+    const withDecibels = products.filter(p => p.specs?.decibels);
+    if (withDecibels.length > 0) {
+      const quietest = withDecibels.sort((a, b) => {
+        const aDb = parseInt(a.specs.decibels || '100', 10);
+        const bDb = parseInt(b.specs.decibels || '100', 10);
+        return aDb - bDb;
+      })[0];
+      return {
+        product: quietest,
+        reason: `Quietest model available at ${quietest.specs.decibels}`,
+      };
+    }
+  }
+
+  // For budget queries: recommend best within budget
+  if (classification.budget !== undefined) {
+    const withinBudget = products.filter(p => p.price <= classification.budget!);
+    if (withinBudget.length > 0) {
+      // Prefer highest price within budget (best value)
+      const bestValue = withinBudget.sort((a, b) => b.price - a.price)[0];
+      return {
+        product: bestValue,
+        reason: `Best value within your $${classification.budget} budget`,
+      };
+    }
+    // If nothing in budget, recommend reconditioned or cheapest
+    const cheapest = products.sort((a, b) => a.price - b.price)[0];
+    if (cheapest.sku.includes('RECONDITIONED')) {
+      return {
+        product: cheapest,
+        reason: `Certified reconditioned option - closest to your budget at $${cheapest.price}`,
+      };
+    }
+    return {
+      product: cheapest,
+      reason: `Most affordable option at $${cheapest.price} (above budget but closest available)`,
+    };
+  }
+
+  // Default: recommend the top product (usually highest-rated/featured)
+  return {
+    product: products[0],
+    reason: 'Top recommendation based on your needs',
+  };
+}
+
+/**
  * Build user prompt with context
  */
 function buildUserPrompt(
@@ -236,7 +351,31 @@ function buildUserPrompt(
 - Type: ${classification.type}
 - Confidence: ${classification.confidence}
 - Keywords: ${classification.keywords.join(', ')}
+`;
 
+  // Add special context flags
+  const specialContext: string[] = [];
+  if (classification.isAccessibilityQuery) {
+    specialContext.push('ACCESSIBILITY NEED: User may have mobility/dexterity limitations. Emphasize ease of use, ergonomic features, simple controls.');
+  }
+  if (classification.isNoiseQuery) {
+    specialContext.push('NOISE CONCERN: User is concerned about blender noise. Include decibel information, highlight quieter models, acknowledge apartment/shared living situations.');
+  }
+  if (classification.isMedicalQuery) {
+    specialContext.push('MEDICAL/THERAPY CONTEXT: User may have swallowing difficulties or medical dietary needs. Emphasize smooth textures, puree capabilities, safe food preparation. Be empathetic and supportive.');
+  }
+  if (classification.budget !== undefined) {
+    specialContext.push(`BUDGET CONSTRAINT: User has a budget of $${classification.budget}. Prioritize products within or close to budget. Be transparent about pricing - if no products meet budget, suggest alternatives like certified reconditioned models or payment plans.`);
+  }
+
+  if (specialContext.length > 0) {
+    prompt += '\n## Special Context\n';
+    for (const ctx of specialContext) {
+      prompt += `- ${ctx}\n`;
+    }
+  }
+
+  prompt += `
 ## Available Context
 
 `;
@@ -255,6 +394,18 @@ function buildUserPrompt(
 `;
     }
     prompt += '\n';
+
+    // Add specific recommendation
+    const recommendation = selectRecommendedProduct(context, classification);
+    if (recommendation) {
+      prompt += `### Recommended Product
+**${recommendation.product.name}** (SKU: ${recommendation.product.sku})
+- Price: $${recommendation.product.price}
+- Why: ${recommendation.reason}
+
+IMPORTANT: When generating content, prominently feature this as "Our Pick for You" or "Recommended for You" and explain why it's the best choice for this user's specific needs.
+`;
+    }
   }
 
   // Add recipes if relevant
@@ -296,6 +447,29 @@ Category: ${faq.category}
 `;
     }
     prompt += '\n';
+  }
+
+  // Add support information for support queries
+  if (classification.type === 'support') {
+    prompt += `
+### Support Resources
+Always include these contact options for support queries:
+- Phone: 1-800-848-2649 (Mon-Fri 8am-5pm EST)
+- Online: vitamix.com/support
+- Live Chat: Available on website during business hours
+- Warranty Claims: vitamix.com/warranty-claim
+
+For warranty-related issues, mention:
+- Full warranty coverage for motor and performance
+- Easy online claim process
+- Free repairs during warranty period
+
+For troubleshooting, guide users through:
+1. Check power connection
+2. Ensure container is properly seated
+3. Verify lid is secure
+4. If issue persists, contact support with model number and serial number
+`;
   }
 
   prompt += `

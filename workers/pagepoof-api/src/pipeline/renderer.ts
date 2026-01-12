@@ -20,41 +20,68 @@ export interface RenderResult {
   blocks: RenderedBlock[];
   failedCount: number;
   totalCount: number;
+  skippedCount: number;  // Blocks skipped due to no content
 }
 
 /**
  * Render all blocks to HTML with error recovery
  * Failed blocks are replaced with placeholder content
+ * Empty blocks are filtered out
  */
 export function renderBlocks(
   blocks: LayoutBlock[],
   atoms: ContentAtom[]
 ): RenderedBlock[] {
-  return blocks.map((block, index) => {
+  const results: RenderedBlock[] = [];
+
+  for (const block of blocks) {
     const blockAtoms = block.atomIndices.map(i => atoms[i]).filter(Boolean);
 
     try {
       const html = renderBlock(block.blockName, blockAtoms, block.variant);
 
-      return {
+      // Skip blocks that returned null or empty content
+      if (!html || isEmptyBlock(html)) {
+        console.log(`Skipping empty block: ${block.blockName}`);
+        continue;
+      }
+
+      results.push({
         name: block.blockName,
         html,
         atoms: blockAtoms,
-      };
+      });
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : String(error);
       console.error(`Block rendering failed [${block.blockName}]:`, errorMessage);
 
       // Return fallback placeholder block
-      return {
+      results.push({
         name: block.blockName,
         html: renderErrorPlaceholder(block.blockName, errorMessage),
         atoms: blockAtoms,
         error: true,
         errorMessage,
-      };
+      });
     }
-  });
+  }
+
+  return results;
+}
+
+/**
+ * Check if a rendered block is effectively empty
+ */
+function isEmptyBlock(html: string): boolean {
+  // Remove the outer div and check if there's any meaningful content
+  const stripped = html
+    .replace(/<div[^>]*>/g, '')
+    .replace(/<\/div>/g, '')
+    .replace(/\s+/g, ' ')
+    .trim();
+
+  // Empty if only whitespace or no content
+  return stripped.length === 0;
 }
 
 /**
@@ -66,11 +93,13 @@ export function renderBlocksWithStats(
 ): RenderResult {
   const renderedBlocks = renderBlocks(blocks, atoms);
   const failedCount = renderedBlocks.filter(b => b.error).length;
+  const skippedCount = blocks.length - renderedBlocks.length;
 
   return {
     blocks: renderedBlocks,
     failedCount,
     totalCount: renderedBlocks.length,
+    skippedCount,
   };
 }
 

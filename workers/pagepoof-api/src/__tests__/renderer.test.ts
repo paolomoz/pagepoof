@@ -282,16 +282,45 @@ describe('Block Renderer', () => {
     it('should return stats with blocks', () => {
       const atoms: ContentAtom[] = [
         { type: 'heading', content: { text: 'Test' }, priority: 1 },
+        {
+          type: 'feature_set',
+          content: {
+            features: [
+              { title: 'Feature 1', description: 'Desc 1' },
+            ],
+          },
+          priority: 2,
+        },
       ];
       const blocks: LayoutBlock[] = [
         { blockName: 'hero', atomIndices: [0] },
-        { blockName: 'cards', atomIndices: [] },
+        { blockName: 'cards', atomIndices: [1] },
       ];
 
       const result = renderBlocksWithStats(blocks, atoms);
 
       expect(result.totalCount).toBe(2);
       expect(result.blocks).toHaveLength(2);
+      expect(result.skippedCount).toBe(0);
+    });
+
+    it('should skip empty blocks and track skippedCount', () => {
+      const atoms: ContentAtom[] = [
+        { type: 'heading', content: { text: 'Test' }, priority: 1 },
+      ];
+      const blocks: LayoutBlock[] = [
+        { blockName: 'hero', atomIndices: [0] },
+        { blockName: 'cards', atomIndices: [] }, // Empty - should be skipped
+      ];
+
+      const result = renderBlocksWithStats(blocks, atoms);
+
+      // totalCount reflects actually rendered blocks
+      expect(result.totalCount).toBe(1);
+      expect(result.blocks).toHaveLength(1);
+      // skippedCount = input blocks (2) - rendered blocks (1)
+      expect(result.skippedCount).toBe(1);
+      expect(result.blocks[0].name).toBe('hero');
     });
 
     it('should track failed blocks', () => {

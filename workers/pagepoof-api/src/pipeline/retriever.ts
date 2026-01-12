@@ -17,6 +17,53 @@ export interface RetrievalOptions {
   userProfile?: UserProfile;
 }
 
+// Term expansion for semantic matching
+// Maps conversational terms to FAQ-friendly terms
+const TERM_EXPANSIONS: Record<string, string[]> = {
+  // Accessibility terms
+  arthritis: ['easy', 'grip', 'ergonomic', 'accessibility', 'senior', 'mobility'],
+  grip: ['easy', 'handle', 'ergonomic', 'comfortable', 'accessibility'],
+  mobility: ['easy', 'accessibility', 'senior', 'ergonomic'],
+  elderly: ['senior', 'easy', 'simple', 'accessibility'],
+  senior: ['easy', 'simple', 'accessibility', 'ergonomic'],
+  disabled: ['accessibility', 'easy', 'ergonomic'],
+  // Noise terms
+  quiet: ['noise', 'sound', 'decibel', 'silent', 'apartment'],
+  noise: ['quiet', 'sound', 'decibel', 'loud', 'volume'],
+  loud: ['noise', 'quiet', 'sound', 'decibel'],
+  apartment: ['noise', 'quiet', 'sound', 'neighbor'],
+  decibel: ['noise', 'sound', 'quiet', 'db'],
+  // Medical terms
+  dysphagia: ['swallow', 'puree', 'texture', 'medical', 'therapy'],
+  stroke: ['medical', 'therapy', 'recovery', 'puree', 'texture'],
+  swallow: ['dysphagia', 'puree', 'texture', 'safe', 'medical'],
+  therapy: ['medical', 'recovery', 'dysphagia', 'puree'],
+  puree: ['texture', 'smooth', 'medical', 'baby', 'soft'],
+  // Budget terms
+  budget: ['price', 'cost', 'affordable', 'value', 'cheap', 'save'],
+  cheap: ['budget', 'affordable', 'value', 'price', 'cost'],
+  afford: ['budget', 'price', 'cost', 'value', 'payment'],
+  broke: ['budget', 'affordable', 'value', 'price'],
+  // Allergy terms
+  allergy: ['clean', 'sanitize', 'allergen', 'cross-contamination', 'separate'],
+  allergies: ['clean', 'sanitize', 'allergen', 'container', 'separate'],
+  allergen: ['clean', 'sanitize', 'container', 'separate'],
+  // Support terms
+  broken: ['warranty', 'repair', 'replace', 'return', 'service'],
+  repair: ['warranty', 'service', 'fix', 'broken', 'replace'],
+  warranty: ['repair', 'service', 'replace', 'return', 'claim'],
+  return: ['warranty', 'refund', 'exchange', 'service'],
+};
+
+// Categories to search based on classification flags
+const CLASSIFICATION_FAQ_CATEGORIES: Record<string, string[]> = {
+  accessibility: ['getting-started', 'features', 'product-selection', 'ease-of-use'],
+  noise: ['features', 'product-comparison', 'specifications', 'apartment-living'],
+  medical: ['getting-started', 'features', 'recipes', 'safety', 'texture'],
+  budget: ['pricing', 'value', 'product-comparison', 'payment', 'refurbished'],
+  support: ['warranty', 'troubleshooting', 'service', 'repair', 'returns'],
+};
+
 /**
  * Retrieve relevant context based on query classification
  * Uses Vectorize for semantic search, falls back to D1 keyword search
@@ -45,7 +92,7 @@ export async function retrieveContext(
         // Supplement with FAQs and videos from D1 keyword search
         const [faqs, videos] = await Promise.all([
           filters.collections.includes('faqs')
-            ? retrieveFaqs(query, keywords, filters, env)
+            ? retrieveFaqs(query, keywords, filters, env, classification)
             : Promise.resolve([]),
           filters.collections.includes('videos')
             ? retrieveVideos(query, keywords, filters, env)
@@ -61,13 +108,13 @@ export async function retrieveContext(
   // Fallback: Run D1 keyword retrievals in parallel
   const [products, recipes, faqs, videos] = await Promise.all([
     filters.collections.includes('products')
-      ? retrieveProducts(query, keywords, filters, env, userProfile)
+      ? retrieveProducts(query, keywords, filters, env, userProfile, classification)
       : Promise.resolve([]),
     filters.collections.includes('recipes')
       ? retrieveRecipes(query, keywords, filters, env, userProfile)
       : Promise.resolve([]),
     filters.collections.includes('faqs')
-      ? retrieveFaqs(query, keywords, filters, env)
+      ? retrieveFaqs(query, keywords, filters, env, classification)
       : Promise.resolve([]),
     filters.collections.includes('videos')
       ? retrieveVideos(query, keywords, filters, env)
@@ -213,23 +260,28 @@ async function fetchRecipesBySlugs(
 /**
  * Retrieve products from D1
  * Boosts preferred series based on user profile
+ * Searches features for use-case matching (accessibility, noise, etc.)
  */
 async function retrieveProducts(
   query: string,
   keywords: string[],
   filters: RagFilters,
   env: Env,
-  userProfile?: UserProfile
+  userProfile?: UserProfile,
+  classification?: ClassificationResult
 ): Promise<RagContext['products']> {
   const searchTerms = keywords.length > 0 ? keywords : query.split(/\s+/);
 
-  // Build LIKE conditions for search
-  const likeConditions = searchTerms
-    .slice(0, 5)
-    .map((_, i) => `(name LIKE ?${i + 1} OR description LIKE ?${i + 1} OR series LIKE ?${i + 1})`)
+  // Expand terms for use-case matching
+  const expandedTerms = expandSearchTerms(searchTerms);
+
+  // Build LIKE conditions for search (include features column)
+  const terms = expandedTerms.slice(0, 5);
+  const likeConditions = terms
+    .map((_, i) => `(name LIKE ?${i + 1} OR description LIKE ?${i + 1} OR series LIKE ?${i + 1} OR features LIKE ?${i + 1})`)
     .join(' OR ');
 
-  const params = searchTerms.slice(0, 5).map(t => `%${t}%`);
+  const params = terms.map(t => `%${t}%`);
 
   try {
     const result = await env.DB.prepare(`
@@ -244,7 +296,7 @@ async function retrieveProducts(
         price DESC
       LIMIT ?
     `)
-      .bind(...params, filters.topK * 2) // Get extra for boosting
+      .bind(...params, filters.topK * 3) // Get extra for scoring
       .all();
 
     let products = (result.results || []).map((row: Record<string, unknown>) => ({
@@ -257,16 +309,83 @@ async function retrieveProducts(
       specs: parseJsonSafe<Record<string, string>>(row.specs as string, {}),
     }));
 
+    // Score products by relevance to search terms
+    products = scoreAndSortProducts(products, expandedTerms, classification);
+
     // Boost preferred series if user has preferences
     if (userProfile?.preferredSeries?.length && products.length > 1) {
       products = boostPreferredSeries(products, userProfile.preferredSeries);
     }
+
+    console.log(`[RAG] Product retrieval: ${products.length} results (expanded from ${searchTerms.length} to ${expandedTerms.length} terms)`);
 
     return products.slice(0, filters.topK);
   } catch (error) {
     console.error('Error retrieving products:', error);
     return [];
   }
+}
+
+/**
+ * Score and sort products by relevance
+ * Boosts products that match use-case queries (accessibility, noise, etc.)
+ */
+function scoreAndSortProducts(
+  products: RagContext['products'],
+  terms: string[],
+  classification?: ClassificationResult
+): RagContext['products'] {
+  const scored = products.map(product => {
+    let score = 0;
+    const nameLower = product.name.toLowerCase();
+    const descLower = product.description.toLowerCase();
+    const featuresLower = (product.features || []).join(' ').toLowerCase();
+
+    // Score term matches
+    for (const term of terms) {
+      if (nameLower.includes(term)) score += 3;
+      if (descLower.includes(term)) score += 2;
+      if (featuresLower.includes(term)) score += 2;
+    }
+
+    // Boost based on classification
+    if (classification?.isAccessibilityQuery) {
+      // Boost products with accessibility-friendly features
+      if (featuresLower.includes('easy') || featuresLower.includes('simple') ||
+          featuresLower.includes('ergonomic') || featuresLower.includes('intuitive')) {
+        score += 3;
+      }
+    }
+
+    if (classification?.isNoiseQuery) {
+      // Boost quieter models
+      if (featuresLower.includes('quiet') || nameLower.includes('quiet')) {
+        score += 5;
+      }
+      if (product.specs?.decibels) {
+        const db = parseInt(String(product.specs.decibels), 10);
+        if (db < 80) score += 3;
+        if (db < 70) score += 2;
+      }
+    }
+
+    if (classification?.budget !== undefined) {
+      // Boost products within budget (give slight preference)
+      if (product.price <= classification.budget) {
+        score += 4;
+      } else if (product.price <= classification.budget * 1.2) {
+        // Within 20% of budget - still relevant
+        score += 1;
+      }
+    }
+
+    return { product, score };
+  });
+
+  // Sort by score descending
+  scored.sort((a, b) => b.score - a.score);
+
+  return scored.map(s => s.product);
 }
 
 /**
@@ -330,18 +449,25 @@ async function retrieveRecipes(
 }
 
 /**
- * Retrieve FAQs from D1
+ * Retrieve FAQs from D1 with semantic term expansion
+ * Uses classification flags to boost relevant FAQ categories
  */
 async function retrieveFaqs(
   query: string,
   keywords: string[],
   filters: RagFilters,
-  env: Env
+  env: Env,
+  classification?: ClassificationResult
 ): Promise<RagContext['faqs']> {
   const searchTerms = keywords.length > 0 ? keywords : query.split(/\s+/).filter(Boolean);
-  const terms = searchTerms.slice(0, 3); // Limit to 3 terms for simpler queries
 
-  if (terms.length === 0) {
+  // Expand terms using semantic mappings
+  const expandedTerms = expandSearchTerms(searchTerms);
+
+  // Get categories to prioritize based on classification flags
+  const priorityCategories = getClassificationCategories(classification);
+
+  if (expandedTerms.length === 0 && priorityCategories.length === 0) {
     // No search terms - return most recent FAQs
     try {
       const result = await env.DB.prepare(`
@@ -363,35 +489,145 @@ async function retrieveFaqs(
     }
   }
 
-  // Build simple OR conditions with positional params
+  // Build search conditions
   const conditions: string[] = [];
   const params: string[] = [];
 
-  for (const term of terms) {
+  // Add term-based conditions (limit to 5 expanded terms)
+  const termsToSearch = expandedTerms.slice(0, 5);
+  for (const term of termsToSearch) {
     const pattern = `%${term}%`;
     conditions.push('(question LIKE ? OR answer LIKE ? OR tags LIKE ?)');
     params.push(pattern, pattern, pattern);
   }
 
+  // Add category-based conditions if we have priority categories
+  if (priorityCategories.length > 0) {
+    const categoryConditions = priorityCategories.map(() => 'category LIKE ?').join(' OR ');
+    conditions.push(`(${categoryConditions})`);
+    params.push(...priorityCategories.map(c => `%${c}%`));
+  }
+
+  if (conditions.length === 0) {
+    return [];
+  }
+
   try {
+    // Get more results to allow for relevance sorting
     const result = await env.DB.prepare(`
       SELECT question, answer, category
       FROM faqs
       WHERE ${conditions.join(' OR ')}
       LIMIT ?
     `)
-      .bind(...params, filters.topK)
+      .bind(...params, filters.topK * 2)
       .all();
 
-    return (result.results || []).map((row: Record<string, unknown>) => ({
+    let faqs = (result.results || []).map((row: Record<string, unknown>) => ({
       question: row.question as string,
       answer: row.answer as string,
       category: row.category as string,
     }));
+
+    // Score and sort FAQs by relevance
+    faqs = scoreAndSortFaqs(faqs, termsToSearch, priorityCategories);
+
+    console.log(`[RAG] FAQ retrieval: ${faqs.length} results (expanded from ${searchTerms.length} to ${expandedTerms.length} terms)`);
+
+    return faqs.slice(0, filters.topK);
   } catch (error) {
     console.error('Error retrieving FAQs:', error);
     return [];
   }
+}
+
+/**
+ * Expand search terms using semantic mappings
+ */
+function expandSearchTerms(terms: string[]): string[] {
+  const expanded = new Set<string>();
+
+  for (const term of terms) {
+    const normalized = term.toLowerCase();
+    // Add original term
+    expanded.add(normalized);
+
+    // Add expansions if available
+    const expansions = TERM_EXPANSIONS[normalized];
+    if (expansions) {
+      for (const exp of expansions) {
+        expanded.add(exp);
+      }
+    }
+  }
+
+  return Array.from(expanded);
+}
+
+/**
+ * Get FAQ categories to prioritize based on classification flags
+ */
+function getClassificationCategories(classification?: ClassificationResult): string[] {
+  if (!classification) return [];
+
+  const categories: string[] = [];
+
+  if (classification.isAccessibilityQuery) {
+    categories.push(...(CLASSIFICATION_FAQ_CATEGORIES.accessibility || []));
+  }
+  if (classification.isNoiseQuery) {
+    categories.push(...(CLASSIFICATION_FAQ_CATEGORIES.noise || []));
+  }
+  if (classification.isMedicalQuery) {
+    categories.push(...(CLASSIFICATION_FAQ_CATEGORIES.medical || []));
+  }
+  if (classification.budget !== undefined) {
+    categories.push(...(CLASSIFICATION_FAQ_CATEGORIES.budget || []));
+  }
+  if (classification.type === 'support') {
+    categories.push(...(CLASSIFICATION_FAQ_CATEGORIES.support || []));
+  }
+
+  // Deduplicate
+  return [...new Set(categories)];
+}
+
+/**
+ * Score and sort FAQs by relevance to search terms and priority categories
+ */
+function scoreAndSortFaqs(
+  faqs: RagContext['faqs'],
+  terms: string[],
+  priorityCategories: string[]
+): RagContext['faqs'] {
+  const scored = faqs.map(faq => {
+    let score = 0;
+    const questionLower = faq.question.toLowerCase();
+    const answerLower = faq.answer.toLowerCase();
+    const categoryLower = (faq.category || '').toLowerCase();
+
+    // Score term matches
+    for (const term of terms) {
+      // Question matches are most valuable
+      if (questionLower.includes(term)) score += 3;
+      // Answer matches
+      if (answerLower.includes(term)) score += 1;
+    }
+
+    // Boost priority categories
+    for (const cat of priorityCategories) {
+      if (categoryLower.includes(cat.toLowerCase())) {
+        score += 2;
+      }
+    }
+
+    return { faq, score };
+  });
+
+  // Sort by score descending
+  scored.sort((a, b) => b.score - a.score);
+
+  return scored.map(s => s.faq);
 }
 
 /**

@@ -239,6 +239,7 @@ export async function runPipeline(
     logger.info('Blocks rendered', {
       total: renderResult.totalCount,
       failed: renderResult.failedCount,
+      skipped: renderResult.skippedCount,
     });
 
     // Apply URL correction to rendered blocks
@@ -376,6 +377,7 @@ export async function runPipeline(
         description: generation.description,
         blockCount: renderedBlocks.length,
         blocksWithErrors: renderResult.failedCount,
+        blocksSkipped: renderResult.skippedCount,
         queryType: classification.type,
         slug,
         pageUrl,

@@ -14,6 +14,11 @@ export interface ClassificationResult {
   needsProductImages: boolean;
   needsRecipeImages: boolean;
   ragFilters: RagFilters;
+  // Additional context flags
+  isAccessibilityQuery: boolean;
+  isNoiseQuery: boolean;
+  isMedicalQuery: boolean;
+  budget?: number;  // Extracted budget amount in dollars
 }
 
 export interface RagFilters {
@@ -23,6 +28,47 @@ export interface RagFilters {
   diversityPenalty: number;
 }
 
+// Accessibility patterns - boost product classification
+const ACCESSIBILITY_PATTERNS = [
+  /\b(arthritis|arthritic)/i,
+  /\b(grip|grasp|hold)\s*(strength|issue|problem|difficult)/i,
+  /\b(limited|reduce[d]?)\s*(mobility|dexterity|strength)/i,
+  /\b(easy|simple|large)\s*(button|control|interface)/i,
+  /\b(elderly|senior|older|aging)/i,
+  /\b(disability|disabled|handicap)/i,
+  /\b(can('t|not)|hard\s+to)\s*(lift|grip|hold|open)/i,
+  /\b(heavy|weight|lightweight)/i,
+];
+
+// Noise patterns - boost product classification
+const NOISE_PATTERNS = [
+  /\b(quiet|silent|noise|loud|sound|volume)/i,
+  /\b(decibel|db)\b/i,
+  /\b(apartment|neighbor|thin\s*wall|dorm)/i,
+  /\b(quiet\s*one)/i,
+  /\b(during|while)\s*(call|zoom|meeting|work)/i,
+];
+
+// Medical patterns - boost support/product classification
+const MEDICAL_PATTERNS = [
+  /\b(dysphagia|swallow|swallowing)/i,
+  /\b(stroke|medical|therapy|therapist)/i,
+  /\b(puree|pureed|texture|thick|consistency)/i,
+  /\b(chok(e|ing)|aspirat)/i,
+  /\b(nectar|honey).?thick/i,
+  /\b(speech|feeding)\s*(therapy|therapist)/i,
+  /\b(safe|safely)\s*(eat|swallow|consume)/i,
+];
+
+// Budget patterns - used for price filtering
+const BUDGET_PATTERNS = [
+  /\$\s*(\d+)/,  // $350
+  /(\d+)\s*(dollar|buck)/i,  // 350 dollars
+  /\b(budget|afford|cheap|broke|expensive)/i,
+  /\b(entry.?level|starter|beginner)/i,
+  /\b(can('t|not)|don('t|not))\s*(afford|spend)/i,
+];
+
 // Strong indicators get 2.0 weight (vs 0.6-1.0 for patterns)
 const QUERY_PATTERNS: Record<QueryType, { strong: RegExp[]; patterns: RegExp[]; weight: number }> = {
   product: {
@@ -31,6 +77,11 @@ const QUERY_PATTERNS: Record<QueryType, { strong: RegExp[]; patterns: RegExp[]; 
       /\bsku\s*[:\-]?\s*\w+/i,
       /\b(compare|comparison|vs|versus)\b.*\b(blender|vitamix|model)/i,
       /\bwhich\s+(vitamix|blender|model)\b/i,
+      // Accessibility and noise queries are product queries
+      /\b(arthritis|grip\s*strength|mobility|quiet|noise|decibel)/i,
+      // Budget queries about blenders are product queries
+      /\b(budget|afford|cheap).*(blender|vitamix)/i,
+      /\b(blender|vitamix).*(budget|afford|cheap)/i,
     ],
     patterns: [
       /\b(blender|container|blade|motor|base|attachment|accessory)/i,
@@ -38,6 +89,9 @@ const QUERY_PATTERNS: Record<QueryType, { strong: RegExp[]; patterns: RegExp[]; 
       /\b(buy|purchase|order|shop)/i,
       /\b(64\s*oz|48\s*oz|20\s*oz|low.?profile)/i,
       /\bself.?detect/i,
+      // Additional product patterns
+      /\b(recommend|suggestion|best\s+for)/i,
+      /\bwhat\s+(should|to)\s+(i\s+)?(buy|get|choose)/i,
     ],
     weight: 1.0,
   },
@@ -180,6 +234,29 @@ export function classifyQuery(query: string): ClassificationResult {
     general: 0,
   };
 
+  // Detect special query contexts
+  const isAccessibilityQuery = ACCESSIBILITY_PATTERNS.some(p => p.test(normalizedQuery));
+  const isNoiseQuery = NOISE_PATTERNS.some(p => p.test(normalizedQuery));
+  const isMedicalQuery = MEDICAL_PATTERNS.some(p => p.test(normalizedQuery));
+
+  // Extract budget if mentioned
+  const budget = extractBudget(query);
+
+  // Boost product score for accessibility, noise, and budget queries
+  if (isAccessibilityQuery) {
+    scores.product += 2.0;
+  }
+  if (isNoiseQuery) {
+    scores.product += 2.0;
+  }
+  if (isMedicalQuery) {
+    scores.product += 1.5;
+    scores.support += 1.0;
+  }
+  if (budget !== undefined) {
+    scores.product += 1.5;
+  }
+
   // Score each query type
   for (const [type, config] of Object.entries(QUERY_PATTERNS)) {
     const queryType = type as QueryType;
@@ -228,7 +305,30 @@ export function classifyQuery(query: string): ClassificationResult {
     needsProductImages,
     needsRecipeImages,
     ragFilters: RAG_CONFIGS[classifiedType],
+    isAccessibilityQuery,
+    isNoiseQuery,
+    isMedicalQuery,
+    budget,
   };
+}
+
+/**
+ * Extract budget amount from query
+ */
+function extractBudget(query: string): number | undefined {
+  // Match $XXX pattern
+  const dollarMatch = query.match(/\$\s*(\d+)/);
+  if (dollarMatch) {
+    return parseInt(dollarMatch[1], 10);
+  }
+
+  // Match "XXX dollars" pattern
+  const wordMatch = query.match(/(\d+)\s*(dollar|buck)/i);
+  if (wordMatch) {
+    return parseInt(wordMatch[1], 10);
+  }
+
+  return undefined;
 }
 
 /**
