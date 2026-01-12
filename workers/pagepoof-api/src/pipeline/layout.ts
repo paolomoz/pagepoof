@@ -7,6 +7,7 @@
 
 import type { ContentAtom, AtomType } from './generator';
 import type { ClassificationResult } from './classifier';
+import { fetchGoogle } from '../lib/fetch-utils';
 
 export interface BlockDefinition {
   name: string;
@@ -202,7 +203,7 @@ export async function selectLayout(
   const userPrompt = buildLayoutPrompt(atoms, classification);
 
   try {
-    const response = await fetch(
+    const response = await fetchGoogle(
       `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${apiKey}`,
       {
         method: 'POST',
@@ -220,6 +221,9 @@ export async function selectLayout(
             maxOutputTokens: 1024,
           },
         }),
+      },
+      {
+        onRetry: (attempt) => console.log(`[Layout] Retrying Gemini (attempt ${attempt})`),
       }
     );
 

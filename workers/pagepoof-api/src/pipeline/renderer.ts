@@ -78,14 +78,14 @@ export function renderBlocksWithStats(
  * Render a placeholder for failed blocks
  */
 function renderErrorPlaceholder(blockName: string, errorMessage: string): string {
-  // In production, show a clean placeholder; in dev, show error details
-  const isDev = typeof process !== 'undefined' && process.env?.NODE_ENV === 'development';
+  // In Cloudflare Workers, we don't have process.env
+  // Show error details only in the error message for debugging via logs
+  console.error(`Block ${blockName} error: ${errorMessage}`);
 
   return `<div class="${blockName} block-error">
   <div>
     <div>
       <p class="error-placeholder">Content temporarily unavailable</p>
-      ${isDev ? `<p class="error-details">${escapeHtml(errorMessage)}</p>` : ''}
     </div>
   </div>
 </div>`;
@@ -122,6 +122,12 @@ function renderBlock(
       return renderSpeedControl(atoms, variant);
     case 'carousel':
       return renderCarousel(atoms, variant);
+    case 'form':
+      return renderForm(atoms, variant);
+    case 'tips':
+      return renderTips(atoms, variant);
+    case 'nutrition-facts':
+      return renderNutritionFacts(atoms, variant);
     default:
       return renderGenericBlock(blockName, atoms, variant);
   }
@@ -201,6 +207,24 @@ ${rows}
 function renderColumns(atoms: ContentAtom[], variant?: string): string {
   const variantClass = variant ? ` ${variant}` : '';
 
+  // Try to find feature_set first for better column content
+  const featureSet = atoms.find(a => a.type === 'feature_set');
+  if (featureSet) {
+    const features = (featureSet.content as { features: Array<{ title: string; description: string }> }).features || [];
+    if (features.length > 0) {
+      const rows = features.slice(0, 3).map(f => `  <div>
+    <div>
+      <h3>${escapeHtml(f.title)}</h3>
+      <p>${escapeHtml(f.description)}</p>
+    </div>
+  </div>`).join('\n');
+      return `<div class="columns${variantClass}">
+${rows}
+</div>`;
+    }
+  }
+
+  // Process other atom types
   const rows = atoms.map(atom => {
     if (atom.type === 'paragraph') {
       const text = (atom.content as { text: string }).text;
@@ -220,9 +244,32 @@ function renderColumns(atoms: ContentAtom[], variant?: string): string {
       </${listTag}>
     </div>
   </div>`;
+    } else if (atom.type === 'tips') {
+      const tips = (atom.content as { tips: string[] }).tips || [];
+      if (tips.length > 0) {
+        return `  <div>
+    <div>
+      <h3>Pro Tips</h3>
+      <ul>
+        ${tips.map(t => `<li>${escapeHtml(t)}</li>`).join('\n        ')}
+      </ul>
+    </div>
+  </div>`;
+      }
     }
     return '';
   }).filter(Boolean).join('\n');
+
+  // If no content, return a placeholder that won't render empty
+  if (!rows) {
+    return `<div class="columns${variantClass}">
+  <div>
+    <div>
+      <p>Explore our full range of Vitamix products and recipes.</p>
+    </div>
+  </div>
+</div>`;
+  }
 
   return `<div class="columns${variantClass}">
 ${rows}
@@ -537,6 +584,117 @@ ${rows}
 }
 
 /**
+ * Form block - CTA with button
+ */
+function renderForm(atoms: ContentAtom[], variant?: string): string {
+  const cta = atoms.find(a => a.type === 'cta');
+  const variantClass = variant ? ` ${variant}` : '';
+
+  if (cta) {
+    const c = cta.content as { text: string; buttonText?: string; url?: string };
+    const text = c.text || 'Ready to get started?';
+    const buttonText = c.buttonText || 'Shop Now';
+    const url = c.url || '/products';
+
+    return `<div class="form${variantClass}">
+  <div>
+    <div>
+      <p>${escapeHtml(text)}</p>
+      <p><a href="${escapeHtml(url)}" class="button">${escapeHtml(buttonText)}</a></p>
+    </div>
+  </div>
+</div>`;
+  }
+
+  // Default CTA if no atom
+  return `<div class="form${variantClass}">
+  <div>
+    <div>
+      <p>Ready to transform your kitchen with Vitamix?</p>
+      <p><a href="/products" class="button">Shop Vitamix Blenders</a></p>
+    </div>
+  </div>
+</div>`;
+}
+
+/**
+ * Tips block - pro tips section
+ */
+function renderTips(atoms: ContentAtom[], variant?: string): string {
+  const tips = atoms.find(a => a.type === 'tips');
+  const variantClass = variant ? ` ${variant}` : '';
+
+  if (!tips) {
+    return `<div class="tips${variantClass}"></div>`;
+  }
+
+  const t = tips.content as { tips: string[] };
+  const tipsList = t.tips || [];
+
+  if (tipsList.length === 0) {
+    return `<div class="tips${variantClass}"></div>`;
+  }
+
+  const tipsHtml = tipsList.map(tip => `  <div>
+    <div>
+      <p>${escapeHtml(tip)}</p>
+    </div>
+  </div>`).join('\n');
+
+  return `<div class="tips${variantClass}">
+  <div>
+    <div>
+      <h2>Pro Tips</h2>
+    </div>
+  </div>
+${tipsHtml}
+</div>`;
+}
+
+/**
+ * Nutrition facts block - nutrition panel
+ */
+function renderNutritionFacts(atoms: ContentAtom[], variant?: string): string {
+  const nutrition = atoms.find(a => a.type === 'nutrition_facts');
+  const variantClass = variant ? ` ${variant}` : '';
+
+  if (!nutrition) {
+    return `<div class="nutrition-facts${variantClass}"></div>`;
+  }
+
+  const n = nutrition.content as {
+    calories?: number;
+    protein?: string;
+    carbs?: string;
+    fat?: string;
+    fiber?: string;
+    sugar?: string;
+    sodium?: string;
+  };
+
+  const facts = [
+    n.calories ? `<li><strong>Calories:</strong> ${n.calories}</li>` : '',
+    n.protein ? `<li><strong>Protein:</strong> ${escapeHtml(n.protein)}</li>` : '',
+    n.carbs ? `<li><strong>Carbohydrates:</strong> ${escapeHtml(n.carbs)}</li>` : '',
+    n.fat ? `<li><strong>Fat:</strong> ${escapeHtml(n.fat)}</li>` : '',
+    n.fiber ? `<li><strong>Fiber:</strong> ${escapeHtml(n.fiber)}</li>` : '',
+    n.sugar ? `<li><strong>Sugar:</strong> ${escapeHtml(n.sugar)}</li>` : '',
+    n.sodium ? `<li><strong>Sodium:</strong> ${escapeHtml(n.sodium)}</li>` : '',
+  ].filter(Boolean).join('\n      ');
+
+  return `<div class="nutrition-facts${variantClass}">
+  <div>
+    <div>
+      <h3>Nutrition Facts</h3>
+      <ul>
+      ${facts}
+      </ul>
+    </div>
+  </div>
+</div>`;
+}
+
+/**
  * Generic block renderer for unknown block types
  */
 function renderGenericBlock(
@@ -562,13 +720,52 @@ function renderGenericBlock(
       <p>${escapeHtml(text)}</p>
     </div>
   </div>`;
-    }
-    return `  <div>
+    } else if (atom.type === 'cta') {
+      const c = atom.content as { text?: string; buttonText?: string; url?: string };
+      return `  <div>
     <div>
-      <p>[${atom.type}]</p>
+      <p>${escapeHtml(c.text || 'Discover more')}</p>
+      <p><a href="${escapeHtml(c.url || '/products')}" class="button">${escapeHtml(c.buttonText || 'Learn More')}</a></p>
     </div>
   </div>`;
-  }).join('\n');
+    } else if (atom.type === 'list') {
+      const items = (atom.content as { items: string[]; ordered?: boolean }).items || [];
+      const ordered = (atom.content as { ordered?: boolean }).ordered;
+      const listTag = ordered ? 'ol' : 'ul';
+      if (items.length === 0) return '';
+      return `  <div>
+    <div>
+      <${listTag}>
+        ${items.map(i => `<li>${escapeHtml(i)}</li>`).join('\n        ')}
+      </${listTag}>
+    </div>
+  </div>`;
+    } else if (atom.type === 'tips') {
+      const tips = (atom.content as { tips: string[] }).tips || [];
+      if (tips.length === 0) return '';
+      return `  <div>
+    <div>
+      <h3>Tips</h3>
+      <ul>
+        ${tips.map(t => `<li>${escapeHtml(t)}</li>`).join('\n        ')}
+      </ul>
+    </div>
+  </div>`;
+    }
+    // Skip unknown atom types instead of rendering placeholder
+    return '';
+  }).filter(Boolean).join('\n');
+
+  // If no rows rendered, provide default content
+  if (!rows) {
+    return `<div class="${blockName}${variantClass}">
+  <div>
+    <div>
+      <p>Explore our Vitamix products and recipes.</p>
+    </div>
+  </div>
+</div>`;
+  }
 
   return `<div class="${blockName}${variantClass}">
 ${rows}

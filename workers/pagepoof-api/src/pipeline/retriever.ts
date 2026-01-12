@@ -253,8 +253,8 @@ async function retrieveProducts(
       series: row.series as string,
       price: row.price as number,
       description: row.description as string,
-      features: parseJsonSafe(row.features as string, []),
-      specs: parseJsonSafe(row.specs as string, {}),
+      features: parseJsonSafe<string[]>(row.features as string, []),
+      specs: parseJsonSafe<Record<string, string>>(row.specs as string, {}),
     }));
 
     // Boost preferred series if user has preferences
@@ -308,11 +308,11 @@ async function retrieveRecipes(
       slug: row.slug as string,
       title: row.title as string,
       description: row.description as string,
-      ingredients: parseJsonSafe(row.ingredients as string, []),
-      instructions: parseJsonSafe(row.instructions as string, []),
+      ingredients: parseJsonSafe<string[]>(row.ingredients as string, []),
+      instructions: parseJsonSafe<string[]>(row.instructions as string, []),
       prepTime: row.prep_time_minutes as number,
       servings: row.servings as string,
-      dietary: parseJsonSafe(row.dietary_tags as string, []),
+      dietary: parseJsonSafe<string[]>(row.dietary_tags as string, []),
     }));
 
     // Filter by dietary preferences if user has them
@@ -338,27 +338,49 @@ async function retrieveFaqs(
   filters: RagFilters,
   env: Env
 ): Promise<RagContext['faqs']> {
-  const searchTerms = keywords.length > 0 ? keywords : query.split(/\s+/);
-  const terms = searchTerms.slice(0, 5);
+  const searchTerms = keywords.length > 0 ? keywords : query.split(/\s+/).filter(Boolean);
+  const terms = searchTerms.slice(0, 3); // Limit to 3 terms for simpler queries
 
-  const likeConditions = terms
-    .map((_, i) => `(question LIKE ?${i + 1} OR answer LIKE ?${i + 1} OR tags LIKE ?${i + 1})`)
-    .join(' OR ');
+  if (terms.length === 0) {
+    // No search terms - return most recent FAQs
+    try {
+      const result = await env.DB.prepare(`
+        SELECT question, answer, category
+        FROM faqs
+        LIMIT ?
+      `)
+        .bind(filters.topK)
+        .all();
 
-  const params = terms.map(t => `%${t}%`);
-  const orderParam = params.length + 1;
-  const limitParam = params.length + 2;
+      return (result.results || []).map((row: Record<string, unknown>) => ({
+        question: row.question as string,
+        answer: row.answer as string,
+        category: row.category as string,
+      }));
+    } catch (error) {
+      console.error('Error retrieving FAQs:', error);
+      return [];
+    }
+  }
+
+  // Build simple OR conditions with positional params
+  const conditions: string[] = [];
+  const params: string[] = [];
+
+  for (const term of terms) {
+    const pattern = `%${term}%`;
+    conditions.push('(question LIKE ? OR answer LIKE ? OR tags LIKE ?)');
+    params.push(pattern, pattern, pattern);
+  }
 
   try {
     const result = await env.DB.prepare(`
       SELECT question, answer, category
       FROM faqs
-      WHERE ${likeConditions || '1=1'}
-      ORDER BY
-        CASE WHEN question LIKE ?${orderParam} THEN 1 ELSE 2 END
-      LIMIT ?${limitParam}
+      WHERE ${conditions.join(' OR ')}
+      LIMIT ?
     `)
-      .bind(...params, `%${searchTerms[0] || ''}%`, filters.topK)
+      .bind(...params, filters.topK)
       .all();
 
     return (result.results || []).map((row: Record<string, unknown>) => ({
@@ -381,28 +403,53 @@ async function retrieveVideos(
   filters: RagFilters,
   env: Env
 ): Promise<RagContext['videos']> {
-  const searchTerms = keywords.length > 0 ? keywords : query.split(/\s+/);
-  const terms = searchTerms.slice(0, 5);
+  const searchTerms = keywords.length > 0 ? keywords : query.split(/\s+/).filter(Boolean);
+  const terms = searchTerms.slice(0, 3); // Limit to 3 terms for simpler queries
+  const limit = Math.min(filters.topK, 5);
 
-  const likeConditions = terms
-    .map((_, i) => `(title LIKE ?${i + 1} OR description LIKE ?${i + 1} OR tags LIKE ?${i + 1})`)
-    .join(' OR ');
+  if (terms.length === 0) {
+    // No search terms - return most popular videos
+    try {
+      const result = await env.DB.prepare(`
+        SELECT id, title, description, thumbnail_url
+        FROM videos
+        ORDER BY view_count DESC
+        LIMIT ?
+      `)
+        .bind(limit)
+        .all();
 
-  const params = terms.map(t => `%${t}%`);
-  const orderParam = params.length + 1;
-  const limitParam = params.length + 2;
+      return (result.results || []).map((row: Record<string, unknown>) => ({
+        id: row.id as string,
+        title: row.title as string,
+        description: row.description as string,
+        thumbnail: row.thumbnail_url as string,
+      }));
+    } catch (error) {
+      console.error('Error retrieving videos:', error);
+      return [];
+    }
+  }
+
+  // Build simple OR conditions with positional params
+  const conditions: string[] = [];
+  const params: string[] = [];
+
+  for (const term of terms) {
+    const pattern = `%${term}%`;
+    conditions.push('(title LIKE ? OR description LIKE ? OR tags LIKE ?)');
+    params.push(pattern, pattern, pattern);
+  }
 
   try {
     const result = await env.DB.prepare(`
       SELECT id, title, description, thumbnail_url
       FROM videos
-      WHERE ${likeConditions || '1=1'}
-      ORDER BY
-        CASE WHEN title LIKE ?${orderParam} THEN 1 ELSE 2 END,
-        view_count DESC
-      LIMIT ?${limitParam}
+      WHERE ${conditions.join(' OR ')}
+      ORDER BY view_count DESC
+      LIMIT ?
     `)
-      .bind(...params, `%${terms[0] || ''}%`, Math.min(filters.topK, 5))
+      .bind(...params, limit)
       .all();
 
     return (result.results || []).map((row: Record<string, unknown>) => ({

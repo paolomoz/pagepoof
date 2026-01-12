@@ -3,6 +3,8 @@
  * Corrects LLM-generated URLs to match actual product/recipe slugs
  */
 
+import type { Logger } from '../lib/logger';
+
 export interface UrlCatalog {
   products: Map<string, { sku: string; name: string }>;
   recipes: Map<string, { slug: string; title: string }>;
@@ -202,16 +204,55 @@ function ngrams(text: string, n: number): string[] {
 }
 
 /**
+ * URL correction stats
+ */
+export interface UrlCorrectionStats {
+  productsChecked: number;
+  productsCorrected: number;
+  recipesChecked: number;
+  recipesCorrected: number;
+  corrections: Array<{
+    type: 'product' | 'recipe';
+    original: string;
+    corrected: string;
+    matchType: 'exact' | 'fuzzy' | 'none';
+  }>;
+}
+
+/**
  * Correct URLs in rendered HTML
  */
-export function correctUrls(html: string, catalog: UrlCatalog): string {
+export function correctUrls(html: string, catalog: UrlCatalog, logger?: Logger): string {
+  const stats: UrlCorrectionStats = {
+    productsChecked: 0,
+    productsCorrected: 0,
+    recipesChecked: 0,
+    recipesCorrected: 0,
+    corrections: [],
+  };
+
   // Match product URLs: /products/something
   html = html.replace(
     /href="\/products\/([^"]+)"/g,
     (match, slug) => {
+      stats.productsChecked++;
       const product = findProduct(slug, catalog);
-      if (product) {
+      if (product && product.sku !== slug) {
+        stats.productsCorrected++;
+        stats.corrections.push({
+          type: 'product',
+          original: slug,
+          corrected: product.sku,
+          matchType: 'fuzzy',
+        });
         return `href="/products/${product.sku}"`;
+      } else if (product) {
+        stats.corrections.push({
+          type: 'product',
+          original: slug,
+          corrected: product.sku,
+          matchType: 'exact',
+        });
       }
       return match; // Keep original if no match
     }
@@ -221,17 +262,44 @@ export function correctUrls(html: string, catalog: UrlCatalog): string {
   html = html.replace(
     /href="\/recipes\/([^"]+)"/g,
     (match, slug) => {
+      stats.recipesChecked++;
       // Normalize slug (remove trailing slashes for lookup)
       const cleanSlug = slug.replace(/\/+$/, '');
       const recipe = findRecipe(cleanSlug, catalog);
       if (recipe) {
         // Recipe slugs in DB may include trailing slash, normalize output
         const finalSlug = recipe.slug.replace(/\/+$/, '');
+        const wasChanged = finalSlug !== cleanSlug;
+        if (wasChanged) {
+          stats.recipesCorrected++;
+        }
+        stats.corrections.push({
+          type: 'recipe',
+          original: cleanSlug,
+          corrected: finalSlug,
+          matchType: wasChanged ? 'fuzzy' : 'exact',
+        });
         return `href="/recipes/${finalSlug}/"`;
       }
+      stats.corrections.push({
+        type: 'recipe',
+        original: cleanSlug,
+        corrected: cleanSlug,
+        matchType: 'none',
+      });
       return match; // Keep original if no match
     }
   );
+
+  // Log stats if any corrections were made
+  if (logger && (stats.productsCorrected > 0 || stats.recipesCorrected > 0)) {
+    logger.info('URL corrections applied', {
+      productsChecked: stats.productsChecked,
+      productsCorrected: stats.productsCorrected,
+      recipesChecked: stats.recipesChecked,
+      recipesCorrected: stats.recipesCorrected,
+    });
+  }
 
   return html;
 }

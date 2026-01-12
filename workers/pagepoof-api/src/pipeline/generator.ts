@@ -6,6 +6,7 @@
  */
 
 import type { ClassificationResult } from './classifier';
+import { fetchAnthropic } from '../lib/fetch-utils';
 
 // Content atom types
 export type AtomType =
@@ -170,25 +171,31 @@ export async function generateContentAtoms(
 
   const userPrompt = buildUserPrompt(query, classification, context);
 
-  const response = await fetch('https://api.anthropic.com/v1/messages', {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      'x-api-key': apiKey,
-      'anthropic-version': '2023-06-01',
+  const response = await fetchAnthropic(
+    'https://api.anthropic.com/v1/messages',
+    {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'x-api-key': apiKey,
+        'anthropic-version': '2023-06-01',
+      },
+      body: JSON.stringify({
+        model: 'claude-sonnet-4-20250514',
+        max_tokens: 4096,
+        system: systemPrompt,
+        messages: [
+          {
+            role: 'user',
+            content: userPrompt,
+          },
+        ],
+      }),
     },
-    body: JSON.stringify({
-      model: 'claude-sonnet-4-20250514',
-      max_tokens: 4096,
-      system: systemPrompt,
-      messages: [
-        {
-          role: 'user',
-          content: userPrompt,
-        },
-      ],
-    }),
-  });
+    {
+      onRetry: (attempt) => console.log(`[Generator] Retrying content atoms (attempt ${attempt})`),
+    }
+  );
 
   if (!response.ok) {
     const error = await response.text();
@@ -361,20 +368,22 @@ export async function generateHeroContent(
   classification: ClassificationResult,
   apiKey: string
 ): Promise<{ title: string; subtitle: string; imageHint: string }> {
-  const response = await fetch('https://api.anthropic.com/v1/messages', {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      'x-api-key': apiKey,
-      'anthropic-version': '2023-06-01',
-    },
-    body: JSON.stringify({
-      model: 'claude-3-5-haiku-20241022',
-      max_tokens: 256,
-      messages: [
-        {
-          role: 'user',
-          content: `Generate a hero section for a Vitamix page about: "${query}"
+  const response = await fetchAnthropic(
+    'https://api.anthropic.com/v1/messages',
+    {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'x-api-key': apiKey,
+        'anthropic-version': '2023-06-01',
+      },
+      body: JSON.stringify({
+        model: 'claude-3-5-haiku-20241022',
+        max_tokens: 256,
+        messages: [
+          {
+            role: 'user',
+            content: `Generate a hero section for a Vitamix page about: "${query}"
 Query type: ${classification.type}
 
 Return JSON only:
@@ -383,10 +392,15 @@ Return JSON only:
   "subtitle": "Supporting text (15-25 words)",
   "imageHint": "Image description for generation (e.g., 'vitamix blender with fresh smoothie ingredients')"
 }`,
-        },
-      ],
-    }),
-  });
+          },
+        ],
+      }),
+    },
+    {
+      timeout: 15000, // Hero should be fast
+      onRetry: (attempt) => console.log(`[Generator] Retrying hero (attempt ${attempt})`),
+    }
+  );
 
   if (!response.ok) {
     throw new Error(`Claude API error: ${response.status}`);

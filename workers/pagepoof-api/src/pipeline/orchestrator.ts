@@ -12,6 +12,8 @@ import { generateImages, extractImageRequests, type ImageRequest, type Generated
 import { type Session, buildSessionContext, addQueryToSession } from '../lib/session';
 import { trackQuery, trackPagePublished } from '../lib/tracking';
 import { loadUrlCatalog, correctUrls, type UrlCatalog } from './url-mapper';
+import { createLogger, generateRequestId, notifyRequestComplete, type Logger } from '../lib/logger';
+import { validateAtoms } from './validator';
 
 export interface Env {
   DB: D1Database;
@@ -68,21 +70,36 @@ export async function runPipeline(
   env: Env,
   stream: StreamWriter,
   options: PipelineOptions = {}
-): Promise<{ success: boolean; pageHtml?: string; slug?: string; error?: string }> {
+): Promise<{ success: boolean; pageHtml?: string; slug?: string; error?: string; requestId?: string }> {
   const {
     session,
     baseUrl = 'https://main--pagepoof--paolomoz.aem.live',
     imageBaseUrl = 'https://pagepoof-api.paolo-moz.workers.dev',
   } = options;
 
+  // Create request-scoped logger
+  const requestId = generateRequestId();
+  const logger = createLogger({
+    requestId,
+    sessionId: session?.id,
+    query: query.slice(0, 100),
+  });
+
+  logger.info('Pipeline started', { query: query.slice(0, 100) });
+
   try {
     // Phase 1: Classification (~100ms)
+    logger.setPhase('classification');
     await stream.write({
       event: 'progress',
       data: { step: 'classification', message: 'Analyzing your query...' },
     });
 
     const classification = classifyQuery(query);
+    logger.info('Query classified', {
+      type: classification.type,
+      confidence: classification.confidence,
+    });
 
     await stream.write({
       event: 'classification',
@@ -99,6 +116,7 @@ export async function runPipeline(
 
     // Phase 2: RAG Retrieval + Hero Generation (PARALLEL for faster time-to-first-content)
     // Hero doesn't need RAG context, so we can run them simultaneously
+    logger.setPhase('retrieval');
     await stream.write({
       event: 'progress',
       data: { step: 'retrieval', message: 'Gathering relevant information...' },
@@ -153,6 +171,7 @@ export async function runPipeline(
     });
 
     // Phase 3: Full content generation (~3-5s with Sonnet)
+    logger.setPhase('content');
     await stream.write({
       event: 'progress',
       data: { step: 'content', message: 'Generating content...' },
@@ -165,6 +184,24 @@ export async function runPipeline(
       env.ANTHROPIC_API_KEY
     );
 
+    // Validate content atoms before rendering
+    const validation = validateAtoms(generation.atoms, logger);
+    if (!validation.valid) {
+      logger.warn('Content validation had errors', {
+        errors: validation.errors.length,
+        warnings: validation.warnings.length,
+      });
+    }
+
+    // Use validated atoms
+    generation.atoms = validation.atoms;
+
+    logger.info('Content generated', {
+      title: generation.title,
+      atomCount: generation.atoms.length,
+      validationErrors: validation.errors.length,
+    });
+
     await stream.write({
       event: 'generation',
       data: {
@@ -175,6 +212,7 @@ export async function runPipeline(
     });
 
     // Phase 4: Layout selection (~500ms)
+    logger.setPhase('layout');
     await stream.write({
       event: 'progress',
       data: { step: 'layout', message: 'Optimizing layout...' },
@@ -191,18 +229,23 @@ export async function runPipeline(
     });
 
     // Phase 5: Block rendering and streaming (with error recovery)
+    logger.setPhase('rendering');
     await stream.write({
       event: 'progress',
       data: { step: 'rendering', message: 'Building page blocks...' },
     });
 
     const renderResult = renderBlocksWithStats(layout.blocks, generation.atoms);
+    logger.info('Blocks rendered', {
+      total: renderResult.totalCount,
+      failed: renderResult.failedCount,
+    });
 
     // Apply URL correction to rendered blocks
     const urlCatalog = await urlCatalogPromise;
     const renderedBlocks = renderResult.blocks.map(block => ({
       ...block,
-      html: correctUrls(block.html, urlCatalog),
+      html: correctUrls(block.html, urlCatalog, logger),
     }));
 
     // Report any block failures
@@ -343,20 +386,28 @@ export async function runPipeline(
       },
     });
 
-    return { success: true, pageHtml, slug };
+    logger.info('Pipeline completed successfully', {
+      duration: logger.elapsed(),
+      blockCount: renderedBlocks.length,
+    });
+    notifyRequestComplete(requestId, logger.elapsed(), true);
+
+    return { success: true, pageHtml, slug, requestId };
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : String(error);
-    console.error('Pipeline error:', errorMessage);
+    logger.error('Pipeline failed', error, { phase: logger.getContext().phase });
+    notifyRequestComplete(requestId, logger.elapsed(), false);
 
     await stream.write({
       event: 'error',
       data: {
         message: 'An error occurred during generation',
         details: errorMessage,
+        requestId,
       },
     });
 
-    return { success: false, error: errorMessage };
+    return { success: false, error: errorMessage, requestId };
   }
 }
 
