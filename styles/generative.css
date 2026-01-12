@@ -443,7 +443,22 @@ img.image-error::after {
 /* Generative container */
 .generative-container {
   min-height: 80vh;
-  padding: 2rem;
+  padding: 0;
+  display: none;
+}
+
+/* Generation mode - hide homepage content, show only generated content */
+body.generating-mode .section:not(.generative-container) {
+  display: none !important;
+}
+
+body.generating-mode .generative-container {
+  display: block !important;
+}
+
+body.generating-mode header,
+body.generating-mode footer {
+  display: none;
 }
 
 /* Responsive adjustments */

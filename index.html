@@ -145,6 +145,16 @@
   <footer></footer>
 
   <!-- Generative page handler -->
+  <script>
+    // Check for generation query params immediately (before module loading)
+    (function() {
+      const params = new URLSearchParams(window.location.search);
+      const query = params.get('generate') || params.get('experiment') || params.get('fast');
+      if (query) {
+        document.body.classList.add('generating-mode');
+      }
+    })();
+  </script>
   <script type="module">
     import { generatePage } from '/scripts/generative.js';
 
@@ -153,13 +163,7 @@
     const query = params.get('generate') || params.get('experiment') || params.get('fast');
 
     if (query) {
-      // Hide static content, show generation container
-      document.querySelectorAll('main > .section:not(.generative-container)').forEach(s => {
-        s.style.display = 'none';
-      });
-
       const container = document.getElementById('generative-output');
-      container.style.display = 'block';
 
       // Start generation
       generatePage(query, container, {
@@ -178,6 +182,8 @@
           if (data.slug) {
             history.replaceState({}, '', `/${data.slug}`);
           }
+          // Mark generation complete
+          document.body.classList.add('generation-complete');
         },
         onError: (error) => {
           console.error('Generation error:', error);
