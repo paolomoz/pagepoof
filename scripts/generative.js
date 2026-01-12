@@ -3,7 +3,7 @@
  * Handles SSE streaming for AI-generated pages with reconnection support
  */
 
-const API_BASE = 'https://pagepoof-api.paolomoz.workers.dev';
+const API_BASE = 'https://pagepoof-api.paolo-moz.workers.dev';
 
 // Reconnection settings
 const MAX_RETRIES = 3;
