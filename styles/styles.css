@@ -110,6 +110,8 @@ html {
 
 body {
   display: none;
+  flex-direction: column;
+  min-height: 100vh;
   margin: 0;
   color: var(--color-text);
   font-family: var(--body-font-family);
@@ -119,7 +121,11 @@ body {
 }
 
 body.appear {
-  display: block;
+  display: flex;
+}
+
+body main {
+  flex: 1;
 }
 
 body[data-scroll='disabled'] {

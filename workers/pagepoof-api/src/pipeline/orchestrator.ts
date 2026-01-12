@@ -16,6 +16,8 @@ export interface Env {
   DB: D1Database;
   IMAGES: R2Bucket;
   CACHE: KVNamespace;
+  VECTORIZE: VectorizeIndex;
+  AI: Ai;
   ANTHROPIC_API_KEY: string;
   GOOGLE_AI_API_KEY: string;
   GOOGLE_SERVICE_ACCOUNT_JSON?: string;
@@ -26,6 +28,7 @@ export interface Env {
 export interface PipelineOptions {
   session?: Session;
   baseUrl?: string;
+  imageBaseUrl?: string; // Worker URL for serving generated images
 }
 
 export interface StreamEvent {
@@ -65,7 +68,11 @@ export async function runPipeline(
   stream: StreamWriter,
   options: PipelineOptions = {}
 ): Promise<{ success: boolean; pageHtml?: string; slug?: string; error?: string }> {
-  const { session, baseUrl = 'https://main--pagepoof--paolomoz.aem.live' } = options;
+  const {
+    session,
+    baseUrl = 'https://main--pagepoof--paolomoz.aem.live',
+    imageBaseUrl = 'https://pagepoof-api.paolo-moz.workers.dev',
+  } = options;
 
   try {
     // Phase 1: Classification (~100ms)
@@ -89,17 +96,27 @@ export async function runPipeline(
     // Build session context for personalization
     const sessionContext = session ? buildSessionContext(session) : '';
 
-    // Phase 2: RAG Retrieval (parallel, ~200ms)
+    // Phase 2: RAG Retrieval + Hero Generation (PARALLEL for faster time-to-first-content)
+    // Hero doesn't need RAG context, so we can run them simultaneously
     await stream.write({
       event: 'progress',
       data: { step: 'retrieval', message: 'Gathering relevant information...' },
     });
 
-    const context = await retrieveContext(query, classification, {
-      DB: env.DB,
-      VECTORIZE: env.VECTORIZE,
-      AI: env.AI,
-    });
+    // Start hero generation immediately (fast Haiku model ~1s)
+    const heroPromise = generateHeroContent(query, classification, env.ANTHROPIC_API_KEY);
+
+    // RAG retrieval runs in parallel with smart filtering based on user profile
+    const context = await retrieveContext(
+      query,
+      classification,
+      {
+        DB: env.DB,
+        VECTORIZE: env.VECTORIZE,
+        AI: env.AI,
+      },
+      { userProfile: session?.profile }
+    );
 
     await stream.write({
       event: 'retrieval',
@@ -111,16 +128,15 @@ export async function runPipeline(
       },
     });
 
-    // Phase 3: Two-phase generation
-    // 3a: Fast hero generation (~1s)
+    // Wait for hero (should be done by now since it runs in parallel)
     await stream.write({
       event: 'progress',
       data: { step: 'hero', message: 'Creating page header...' },
     });
 
-    const heroContent = await generateHeroContent(query, classification, env.ANTHROPIC_API_KEY);
+    const heroContent = await heroPromise;
 
-    // Stream hero block immediately
+    // Stream hero block immediately (~1-2s from query start)
     const heroHtml = renderHeroBlock(heroContent);
     await stream.write({
       event: 'block',
@@ -131,7 +147,7 @@ export async function runPipeline(
       },
     });
 
-    // 3b: Full content generation (~3-5s)
+    // Phase 3: Full content generation (~3-5s with Sonnet)
     await stream.write({
       event: 'progress',
       data: { step: 'content', message: 'Generating content...' },
@@ -226,6 +242,7 @@ export async function runPipeline(
           VERTEX_PROJECT_ID: env.VERTEX_PROJECT_ID!,
           VERTEX_LOCATION: env.VERTEX_LOCATION!,
           IMAGES: env.IMAGES,
+          baseUrl: imageBaseUrl,
         };
 
         const generatedImages = await generateImages(imageRequests, imagenEnv, 3);

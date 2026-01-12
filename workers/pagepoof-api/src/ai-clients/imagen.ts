@@ -10,6 +10,7 @@ export interface ImagenEnv {
   VERTEX_PROJECT_ID: string;
   VERTEX_LOCATION: string;
   IMAGES: R2Bucket;
+  baseUrl?: string; // Base URL for serving images (e.g., https://pagepoof-api.workers.dev)
 }
 
 export interface ImageRequest {
@@ -119,9 +120,14 @@ export async function generateImage(
       },
     });
 
+    // Build URL (absolute if baseUrl provided, else relative)
+    const imageUrl = env.baseUrl
+      ? `${env.baseUrl}/images/${imagePath}`
+      : `/images/${imagePath}`;
+
     return {
       id: request.id,
-      url: `/images/${imagePath}`,
+      url: imageUrl,
       size: request.size,
       prompt: request.prompt,
       success: true,

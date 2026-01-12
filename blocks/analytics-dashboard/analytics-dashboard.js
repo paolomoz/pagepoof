@@ -4,7 +4,7 @@
  * Displays analytics metrics, session data, and AI-powered analysis.
  */
 
-const ANALYTICS_ENDPOINT = 'https://pagepoof-analytics.paolomoz.workers.dev';
+const ANALYTICS_ENDPOINT = 'https://pagepoof-analytics.paolo-moz.workers.dev';
 
 /**
  * Format a number with commas

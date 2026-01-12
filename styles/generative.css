@@ -501,3 +501,70 @@ body.generating-mode footer {
     width: 100%;
   }
 }
+
+/* Publish Bar */
+.publish-bar {
+  position: sticky;
+  top: 0;
+  z-index: 100;
+  background: linear-gradient(135deg, #1a1a1a 0%, #2d2d2d 100%);
+  border-bottom: 1px solid #333;
+  padding: 0.75rem 1.5rem;
+}
+
+.publish-bar-content {
+  max-width: 1200px;
+  margin: 0 auto;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 1rem;
+}
+
+.publish-status {
+  color: #ccc;
+  font-size: 0.9rem;
+}
+
+.publish-status a {
+  color: #4CAF50;
+  text-decoration: underline;
+}
+
+.publish-status a:hover {
+  color: #66BB6A;
+}
+
+.publish-btn {
+  background: #c00;
+  color: white;
+  border: none;
+  padding: 0.5rem 1.5rem;
+  border-radius: 6px;
+  font-size: 0.9rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background 0.2s, transform 0.1s;
+}
+
+.publish-btn:hover:not(:disabled) {
+  background: #a00;
+  transform: translateY(-1px);
+}
+
+.publish-btn:disabled {
+  background: #666;
+  cursor: not-allowed;
+}
+
+.publish-btn.published {
+  background: #4CAF50;
+}
+
+@media (max-width: 768px) {
+  .publish-bar-content {
+    flex-direction: column;
+    text-align: center;
+    gap: 0.5rem;
+  }
+}

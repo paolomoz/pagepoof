@@ -3,7 +3,7 @@
  * Sends events to the analytics worker
  */
 
-const ANALYTICS_ENDPOINT = 'https://pagepoof-analytics.paolomoz.workers.dev';
+const ANALYTICS_ENDPOINT = 'https://pagepoof-analytics.paolo-moz.workers.dev';
 
 export interface TrackingEvent {
   type: 'session_start' | 'query' | 'page_published' | 'conversion';

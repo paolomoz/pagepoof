@@ -7,8 +7,9 @@ import { runPipeline, createStreamWriter } from './pipeline/orchestrator';
 import { classifyQuery } from './pipeline/classifier';
 import { getOrCreateSession } from './lib/session';
 import { trackSessionStart } from './lib/tracking';
+import { persistAndPublish, buildDAPageHtml, type DAEnv } from './lib/da-client';
 
-export interface Env {
+export interface Env extends DAEnv {
   IMAGES: R2Bucket;
   CACHE: KVNamespace;
   VECTORIZE: VectorizeIndex;
@@ -20,7 +21,6 @@ export interface Env {
   OPENAI_API_KEY: string;
   VERTEX_PROJECT_ID: string;
   VERTEX_LOCATION: string;
-  DA_TOKEN: string;
 }
 
 export default {
@@ -92,6 +92,7 @@ export default {
 async function handleStream(request: Request, env: Env, ctx: ExecutionContext): Promise<Response> {
   const url = new URL(request.url);
   const query = url.searchParams.get('query') || '';
+  const sessionId = url.searchParams.get('sessionId') || null;
 
   if (!query) {
     return new Response(JSON.stringify({ error: 'Query parameter required' }), {
@@ -115,6 +116,20 @@ async function handleStream(request: Request, env: Env, ctx: ExecutionContext): 
     });
   }
 
+  // Get or create session for personalization
+  const session = await getOrCreateSession(sessionId, env.CACHE, {
+    userAgent: request.headers.get('user-agent') || undefined,
+    referrer: request.headers.get('referer') || undefined,
+  });
+
+  // Track session start (fire and forget)
+  if (session.metadata.totalQueries === 0) {
+    trackSessionStart(session.id, {
+      userAgent: request.headers.get('user-agent') || undefined,
+      referrer: request.headers.get('referer') || undefined,
+    }).catch(() => {});
+  }
+
   // Create SSE stream
   const { readable, writable } = new TransformStream();
   const writer = writable.getWriter();
@@ -126,7 +141,7 @@ async function handleStream(request: Request, env: Env, ctx: ExecutionContext): 
   // Start generation in background
   ctx.waitUntil((async () => {
     try {
-      await runPipeline(query, env, stream);
+      await runPipeline(query, env, stream, { session });
     } catch (error) {
       console.error('Pipeline error:', error);
       await stream.write({
@@ -168,18 +183,61 @@ async function handleClassify(request: Request, env: Env): Promise<Response> {
 }
 
 async function handlePersist(request: Request, env: Env): Promise<Response> {
-  // TODO: Implement DA persistence
-  // Reference: ../vitamix-poc/workers/vitamix-recommender/src/lib/da-client.ts
+  const corsHeaders = {
+    'Content-Type': 'application/json',
+    'Access-Control-Allow-Origin': '*',
+  };
 
-  const body = await request.json() as { query: string; blocks: string; slug: string };
+  try {
+    const body = await request.json() as {
+      title: string;
+      description: string;
+      slug: string;
+      blocks: Array<{ html: string; sectionStyle?: string }>;
+    };
 
-  return new Response(JSON.stringify({
-    success: true,
-    liveUrl: `https://main--pagepoof--paolomoz.aem.live/${body.slug}`,
-    previewUrl: `https://main--pagepoof--paolomoz.aem.page/${body.slug}`,
-  }), {
-    headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' },
-  });
+    // Validate required fields
+    if (!body.slug || !body.blocks || !body.title) {
+      return new Response(JSON.stringify({
+        success: false,
+        error: 'Missing required fields: title, slug, blocks',
+      }), { status: 400, headers: corsHeaders });
+    }
+
+    // Check if DA credentials are configured
+    if (!env.DA_ORG || !env.DA_REPO) {
+      return new Response(JSON.stringify({
+        success: false,
+        error: 'DA credentials not configured (DA_ORG, DA_REPO)',
+      }), { status: 500, headers: corsHeaders });
+    }
+
+    // Build the HTML page
+    const html = buildDAPageHtml(body.title, body.description || '', body.blocks);
+
+    // Persist and publish to DA
+    const path = `/${body.slug}`;
+    const result = await persistAndPublish(path, html, env);
+
+    if (!result.success) {
+      return new Response(JSON.stringify({
+        success: false,
+        error: result.error,
+      }), { status: 500, headers: corsHeaders });
+    }
+
+    return new Response(JSON.stringify({
+      success: true,
+      liveUrl: result.urls!.live,
+      previewUrl: result.urls!.preview,
+    }), { headers: corsHeaders });
+  } catch (error) {
+    console.error('Persist error:', error);
+    return new Response(JSON.stringify({
+      success: false,
+      error: (error as Error).message,
+    }), { status: 500, headers: corsHeaders });
+  }
 }
 
 async function handleImages(request: Request, env: Env, path: string): Promise<Response> {
@@ -189,13 +247,70 @@ async function handleImages(request: Request, env: Env, path: string): Promise<R
   const object = await env.IMAGES.get(imagePath);
 
   if (!object) {
-    return new Response('Image not found', { status: 404 });
+    // Return SVG placeholder for missing images
+    return servePlaceholderImage(imagePath);
   }
 
   return new Response(object.body, {
     headers: {
       'Content-Type': 'image/png',
       'Cache-Control': 'public, max-age=31536000',
+      'Access-Control-Allow-Origin': '*',
+    },
+  });
+}
+
+/**
+ * Generate and serve SVG placeholder images
+ */
+function servePlaceholderImage(path: string): Response {
+  // Determine image dimensions based on the placeholder type
+  let width = 800;
+  let height = 600;
+  let label = 'Loading...';
+  let bgColor = '#e8e8e8';
+  let textColor = '#999999';
+
+  if (path.includes('hero') || path.includes('img-0')) {
+    width = 2000;
+    height = 800;
+    label = 'Hero Image';
+    bgColor = '#1a1a1a';
+    textColor = '#444444';
+  } else if (path.includes('card') || path.includes('recipe')) {
+    width = 750;
+    height = 562;
+    label = 'Recipe Image';
+  } else if (path.includes('product')) {
+    width = 600;
+    height = 600;
+    label = 'Product Image';
+  }
+
+  // Generate a simple SVG placeholder with shimmer effect
+  const svg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${width} ${height}" width="${width}" height="${height}">
+  <defs>
+    <linearGradient id="shimmer" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" style="stop-color:${bgColor}">
+        <animate attributeName="offset" values="-2;1" dur="2s" repeatCount="indefinite"/>
+      </stop>
+      <stop offset="50%" style="stop-color:#f0f0f0">
+        <animate attributeName="offset" values="-1;2" dur="2s" repeatCount="indefinite"/>
+      </stop>
+      <stop offset="100%" style="stop-color:${bgColor}">
+        <animate attributeName="offset" values="0;3" dur="2s" repeatCount="indefinite"/>
+      </stop>
+    </linearGradient>
+  </defs>
+  <rect fill="${bgColor}" width="${width}" height="${height}"/>
+  <rect fill="url(#shimmer)" width="${width}" height="${height}" opacity="0.5"/>
+  <text x="50%" y="50%" font-family="system-ui, sans-serif" font-size="${Math.min(width, height) / 20}" fill="${textColor}" text-anchor="middle" dominant-baseline="middle">${label}</text>
+</svg>`;
+
+  return new Response(svg, {
+    headers: {
+      'Content-Type': 'image/svg+xml',
+      'Cache-Control': 'public, max-age=60', // Short cache for placeholders
       'Access-Control-Allow-Origin': '*',
     },
   });

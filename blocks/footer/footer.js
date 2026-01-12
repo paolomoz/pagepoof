@@ -1,90 +1,57 @@
-import { getMetadata } from '../../scripts/aem.js';
-import { swapIcons } from '../../scripts/scripts.js';
-import { loadFragment } from '../fragment/fragment.js';
+/**
+ * Pagepoof Footer
+ * Simple footer with links and copyright
+ */
 
 /**
- * loads and decorates the footer
+ * Decorates the footer block
  * @param {Element} block The footer block element
  */
 export default async function decorate(block) {
-  // load footer as fragment
-  const footerMeta = getMetadata('footer');
-  const footerPath = footerMeta ? new URL(footerMeta, window.location).pathname : '/footer';
-  const fragment = await loadFragment(footerPath);
-
-  // decorate footer DOM
+  // Clear existing content
   block.textContent = '';
-  const footer = document.createElement('section');
-  footer.id = 'footer';
-  while (fragment.firstElementChild) footer.append(fragment.firstElementChild);
 
-  const classes = ['ribbon', 'form', 'social', 'links', 'copyright'];
-  const children = footer.children.length;
-  // legacy footer
-  if (children < 5) classes.splice(0, 1); // remove ribbon
-  else footer.classList.add('ribbon');
-  classes.forEach((c, i) => {
-    const section = footer.children[i];
-    if (section) {
-      section.id = `footer-${c}`;
-      section.classList.add(`footer-${c}`);
-    }
-  });
+  // Create footer structure
+  const footer = document.createElement('div');
+  footer.className = 'footer-wrapper';
 
-  // decorate ribbon
-  const ribbon = footer.querySelector('.footer-ribbon');
-  if (ribbon) {
-    ribbon.querySelectorAll('ul > li').forEach((li) => {
-      const icon = li.querySelector('.icon');
-      if (icon) {
-        const content = document.createElement('div');
-        [...li.childNodes].forEach((node) => {
-          if (node !== icon) content.append(node);
-        });
-        li.append(content);
-      }
-    });
-  }
+  const currentYear = new Date().getFullYear();
 
-  // decorate social
-  const social = footer.querySelector('.footer-social');
-  if (social) {
-    social.querySelectorAll('a[href]').forEach((a) => {
-      const list = a.closest('li');
-      if (list) {
-        a.classList.add('button');
-        list.classList.add('button-wrapper');
-      } else {
-        a.removeAttribute('class');
-        a.parentElement.removeAttribute('class');
-      }
-    });
-  }
+  footer.innerHTML = `
+    <div class="footer-content">
+      <div class="footer-brand">
+        <a href="/" class="footer-logo">
+          <span class="brand-icon">P</span>
+          <span class="brand-text">Pagepoof</span>
+        </a>
+        <p class="footer-tagline">AI-powered generative experiences</p>
+      </div>
 
-  // decorate links
-  const links = footer.querySelector('.footer-links');
-  if (links) {
-    links.querySelectorAll('ul > li ul').forEach((ul) => {
-      const nested = ul.closest('li');
-      if (nested) {
-        nested.classList.add('subsection');
-      }
-    });
-    links.querySelectorAll('a[href]').forEach((a) => {
-      a.removeAttribute('class');
-      a.parentElement.removeAttribute('class');
-    });
-  }
+      <div class="footer-links">
+        <div class="footer-column">
+          <h4>Explore</h4>
+          <ul>
+            <li><a href="/?generate=smoothie+recipes">Recipes</a></li>
+            <li><a href="/?generate=vitamix+blenders">Products</a></li>
+            <li><a href="/?generate=blending+tips">Tips</a></li>
+          </ul>
+        </div>
+        <div class="footer-column">
+          <h4>Resources</h4>
+          <ul>
+            <li><a href="/agent-self-improve">AI Analytics</a></li>
+            <li><a href="https://www.vitamix.com" target="_blank" rel="noopener">Vitamix.com</a></li>
+            <li><a href="https://www.aem.live" target="_blank" rel="noopener">AEM Edge Delivery</a></li>
+          </ul>
+        </div>
+      </div>
+    </div>
+
+    <div class="footer-bottom">
+      <p class="footer-copyright">&copy; ${currentYear} Pagepoof. Built with AEM Edge Delivery Services.</p>
+      <p class="footer-powered">Powered by Vitamix content</p>
+    </div>
+  `;
 
   block.append(footer);
-  swapIcons(block);
-
-  const cookieDeclaration = block.querySelector('a[href$="cookie-declaration"]');
-  if (cookieDeclaration) {
-    cookieDeclaration.addEventListener('click', (e) => {
-      e.preventDefault();
-      window.Cookiebot.forceDialog = true;
-      window.Cookiebot.renew();
-    });
-  }
 }

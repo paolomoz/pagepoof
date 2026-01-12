@@ -142,7 +142,7 @@ async function handleTrack(request: Request, env: Env): Promise<Response> {
 
   await env.ANALYTICS.put(dailyKey, JSON.stringify(daily), { expirationTtl: 30 * 24 * 60 * 60 });
 
-  // Update recent queries list (for top queries)
+  // Update recent queries list (for top queries and analysis)
   if (event.type === 'query' && event.data?.query) {
     const recentJson = await env.ANALYTICS.get('recent-queries');
     const recent = recentJson ? JSON.parse(recentJson) : [];
@@ -151,6 +151,9 @@ async function handleTrack(request: Request, env: Env): Promise<Response> {
       timestamp: event.timestamp,
       sessionId: event.sessionId,
       consecutiveQueryNumber: event.data.consecutiveQueryNumber || 1,
+      pageUrl: event.data.generatedPageUrl || null,
+      pagePath: event.data.generatedPagePath || null,
+      intent: event.data.intent || null,
     });
     // Keep last 100 queries
     if (recent.length > 100) {
@@ -274,11 +277,12 @@ async function handleAnalyze(request: Request, env: Env): Promise<Response> {
   const pageAnalyses: Array<{ query: string; url: string; analysis: PageAnalysis }> = [];
 
   for (const page of pagesToAnalyze) {
-    if (!page.generatedPageUrl) continue;
+    const pageUrl = page.pageUrl || page.generatedPageUrl;
+    if (!pageUrl) continue;
 
     try {
       // Fetch page content
-      const pageResponse = await fetch(page.generatedPageUrl);
+      const pageResponse = await fetch(pageUrl);
       if (!pageResponse.ok) continue;
 
       const pageHtml = await pageResponse.text();
@@ -288,16 +292,16 @@ async function handleAnalyze(request: Request, env: Env): Promise<Response> {
       const { analyses, successCount } = await runMultiAgentAnalysis(
         pageContent,
         page.query,
-        page.generatedPageUrl,
+        pageUrl,
         env
       );
 
       if (successCount > 0) {
         const synthesis = await synthesizeAnalyses(analyses, pageContent, env);
-        pageAnalyses.push({ query: page.query, url: page.generatedPageUrl, analysis: synthesis });
+        pageAnalyses.push({ query: page.query, url: pageUrl, analysis: synthesis });
       }
     } catch (error) {
-      console.error('Error analyzing page:', page.generatedPageUrl, error);
+      console.error('Error analyzing page:', pageUrl, error);
     }
   }
 
@@ -428,7 +432,11 @@ async function handleAnalyzePage(request: Request, env: Env): Promise<Response> 
     const { analyses, successCount } = await runMultiAgentAnalysis(pageContent, query, pageUrl, env);
 
     if (successCount === 0) {
-      return new Response(JSON.stringify({ error: 'All analysis agents failed' }), {
+      const errors = analyses.map(a => `${a.model}: ${a.error || 'unknown error'}`);
+      return new Response(JSON.stringify({
+        error: 'All analysis agents failed',
+        agentErrors: errors,
+      }), {
         status: 500,
         headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' },
       });

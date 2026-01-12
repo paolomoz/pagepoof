@@ -5,6 +5,7 @@
 
 import type { ClassificationResult, RagFilters } from './classifier';
 import type { RagContext } from './generator';
+import type { UserProfile } from '../lib/session';
 
 export interface Env {
   DB: D1Database;
@@ -12,22 +13,34 @@ export interface Env {
   AI?: Ai;
 }
 
+export interface RetrievalOptions {
+  userProfile?: UserProfile;
+}
+
 /**
  * Retrieve relevant context based on query classification
  * Uses Vectorize for semantic search, falls back to D1 keyword search
+ * Applies smart filtering based on user profile (dietary preferences, interests)
  */
 export async function retrieveContext(
   query: string,
   classification: ClassificationResult,
-  env: Env
+  env: Env,
+  options: RetrievalOptions = {}
 ): Promise<RagContext> {
   const filters = classification.ragFilters;
   const keywords = classification.keywords;
+  const { userProfile } = options;
+
+  // Log dietary filtering if active
+  if (userProfile?.dietaryPreferences?.length) {
+    console.log('[RAG] Applying dietary filters:', userProfile.dietaryPreferences);
+  }
 
   // Try semantic search with Vectorize first
   if (env.VECTORIZE && env.AI) {
     try {
-      const semanticResults = await retrieveWithVectorize(query, filters, env);
+      const semanticResults = await retrieveWithVectorize(query, filters, env, userProfile);
       if (semanticResults.products.length > 0 || semanticResults.recipes.length > 0) {
         // Supplement with FAQs and videos from D1 keyword search
         const [faqs, videos] = await Promise.all([
@@ -48,10 +61,10 @@ export async function retrieveContext(
   // Fallback: Run D1 keyword retrievals in parallel
   const [products, recipes, faqs, videos] = await Promise.all([
     filters.collections.includes('products')
-      ? retrieveProducts(query, keywords, filters, env)
+      ? retrieveProducts(query, keywords, filters, env, userProfile)
       : Promise.resolve([]),
     filters.collections.includes('recipes')
-      ? retrieveRecipes(query, keywords, filters, env)
+      ? retrieveRecipes(query, keywords, filters, env, userProfile)
       : Promise.resolve([]),
     filters.collections.includes('faqs')
       ? retrieveFaqs(query, keywords, filters, env)
@@ -66,20 +79,22 @@ export async function retrieveContext(
 
 /**
  * Semantic search using Vectorize
+ * Applies dietary filtering and series boosting based on user profile
  */
 async function retrieveWithVectorize(
   query: string,
   filters: RagFilters,
-  env: Env
+  env: Env,
+  userProfile?: UserProfile
 ): Promise<RagContext> {
   // Generate embedding for query
   const embedding = await env.AI!.run('@cf/baai/bge-base-en-v1.5', {
     text: [query],
   }) as { data: number[][] };
 
-  // Search Vectorize
+  // Search Vectorize - get extra results for filtering
   const results = await env.VECTORIZE!.query(embedding.data[0], {
-    topK: filters.topK * 2, // Get extra to filter by type
+    topK: filters.topK * 3, // Get extra for dietary filtering
     returnMetadata: 'all',
   });
 
@@ -95,19 +110,31 @@ async function retrieveWithVectorize(
     .map(m => (m.metadata as Record<string, string>)?.sku)
     .filter(Boolean);
 
-  const products = productSkus.length > 0
+  let products = productSkus.length > 0
     ? await fetchProductsBySkus(productSkus, env)
     : [];
 
+  // Boost preferred series if user has preferences
+  if (userProfile?.preferredSeries?.length && products.length > 1) {
+    products = boostPreferredSeries(products, userProfile.preferredSeries);
+  }
+
   // Fetch full recipe details from D1
   const recipeSlugs = recipeMatches
-    .slice(0, filters.topK)
+    .slice(0, filters.topK * 2) // Get extra for dietary filtering
     .map(m => (m.metadata as Record<string, string>)?.slug)
     .filter(Boolean);
 
-  const recipes = recipeSlugs.length > 0
+  let recipes = recipeSlugs.length > 0
     ? await fetchRecipesBySlugs(recipeSlugs, env)
     : [];
+
+  // Filter recipes by dietary preferences
+  if (userProfile?.dietaryPreferences?.length && recipes.length > 0) {
+    recipes = filterByDietaryPreferences(recipes, userProfile.dietaryPreferences, filters.topK);
+  } else {
+    recipes = recipes.slice(0, filters.topK);
+  }
 
   return { products, recipes, faqs: [], videos: [] };
 }
@@ -185,12 +212,14 @@ async function fetchRecipesBySlugs(
 
 /**
  * Retrieve products from D1
+ * Boosts preferred series based on user profile
  */
 async function retrieveProducts(
   query: string,
   keywords: string[],
   filters: RagFilters,
-  env: Env
+  env: Env,
+  userProfile?: UserProfile
 ): Promise<RagContext['products']> {
   const searchTerms = keywords.length > 0 ? keywords : query.split(/\s+/);
 
@@ -215,10 +244,10 @@ async function retrieveProducts(
         price DESC
       LIMIT ?
     `)
-      .bind(...params, filters.topK)
+      .bind(...params, filters.topK * 2) // Get extra for boosting
       .all();
 
-    return (result.results || []).map((row: Record<string, unknown>) => ({
+    let products = (result.results || []).map((row: Record<string, unknown>) => ({
       sku: row.sku as string,
       name: row.name as string,
       series: row.series as string,
@@ -227,6 +256,13 @@ async function retrieveProducts(
       features: parseJsonSafe(row.features as string, []),
       specs: parseJsonSafe(row.specs as string, {}),
     }));
+
+    // Boost preferred series if user has preferences
+    if (userProfile?.preferredSeries?.length && products.length > 1) {
+      products = boostPreferredSeries(products, userProfile.preferredSeries);
+    }
+
+    return products.slice(0, filters.topK);
   } catch (error) {
     console.error('Error retrieving products:', error);
     return [];
@@ -235,21 +271,25 @@ async function retrieveProducts(
 
 /**
  * Retrieve recipes from D1
+ * Filters by dietary preferences based on user profile
  */
 async function retrieveRecipes(
   query: string,
   keywords: string[],
   filters: RagFilters,
-  env: Env
+  env: Env,
+  userProfile?: UserProfile
 ): Promise<RagContext['recipes']> {
   const searchTerms = keywords.length > 0 ? keywords : query.split(/\s+/);
+  const terms = searchTerms.slice(0, 5);
 
-  const likeConditions = searchTerms
-    .slice(0, 5)
+  const likeConditions = terms
     .map((_, i) => `(title LIKE ?${i + 1} OR description LIKE ?${i + 1} OR categories LIKE ?${i + 1})`)
     .join(' OR ');
 
-  const params = searchTerms.slice(0, 5).map(t => `%${t}%`);
+  const params = terms.map(t => `%${t}%`);
+  const orderParam = params.length + 1;
+  const limitParam = params.length + 2;
 
   try {
     const result = await env.DB.prepare(`
@@ -257,14 +297,14 @@ async function retrieveRecipes(
       FROM recipes
       WHERE ${likeConditions || '1=1'}
       ORDER BY
-        CASE WHEN title LIKE ?6 THEN 1 ELSE 2 END,
+        CASE WHEN title LIKE ?${orderParam} THEN 1 ELSE 2 END,
         prep_time_minutes ASC
-      LIMIT ?7
+      LIMIT ?${limitParam}
     `)
-      .bind(...params, `%${searchTerms[0] || ''}%`, filters.topK)
+      .bind(...params, `%${terms[0] || ''}%`, filters.topK * 2) // Get extra for dietary filtering
       .all();
 
-    return (result.results || []).map((row: Record<string, unknown>) => ({
+    let recipes = (result.results || []).map((row: Record<string, unknown>) => ({
       slug: row.slug as string,
       title: row.title as string,
       description: row.description as string,
@@ -274,6 +314,15 @@ async function retrieveRecipes(
       servings: row.servings as string,
       dietary: parseJsonSafe(row.dietary_tags as string, []),
     }));
+
+    // Filter by dietary preferences if user has them
+    if (userProfile?.dietaryPreferences?.length && recipes.length > 0) {
+      recipes = filterByDietaryPreferences(recipes, userProfile.dietaryPreferences, filters.topK);
+    } else {
+      recipes = recipes.slice(0, filters.topK);
+    }
+
+    return recipes;
   } catch (error) {
     console.error('Error retrieving recipes:', error);
     return [];
@@ -290,13 +339,15 @@ async function retrieveFaqs(
   env: Env
 ): Promise<RagContext['faqs']> {
   const searchTerms = keywords.length > 0 ? keywords : query.split(/\s+/);
+  const terms = searchTerms.slice(0, 5);
 
-  const likeConditions = searchTerms
-    .slice(0, 5)
+  const likeConditions = terms
     .map((_, i) => `(question LIKE ?${i + 1} OR answer LIKE ?${i + 1} OR tags LIKE ?${i + 1})`)
     .join(' OR ');
 
-  const params = searchTerms.slice(0, 5).map(t => `%${t}%`);
+  const params = terms.map(t => `%${t}%`);
+  const orderParam = params.length + 1;
+  const limitParam = params.length + 2;
 
   try {
     const result = await env.DB.prepare(`
@@ -304,8 +355,8 @@ async function retrieveFaqs(
       FROM faqs
       WHERE ${likeConditions || '1=1'}
       ORDER BY
-        CASE WHEN question LIKE ?6 THEN 1 ELSE 2 END
-      LIMIT ?7
+        CASE WHEN question LIKE ?${orderParam} THEN 1 ELSE 2 END
+      LIMIT ?${limitParam}
     `)
       .bind(...params, `%${searchTerms[0] || ''}%`, filters.topK)
       .all();
@@ -331,13 +382,15 @@ async function retrieveVideos(
   env: Env
 ): Promise<RagContext['videos']> {
   const searchTerms = keywords.length > 0 ? keywords : query.split(/\s+/);
+  const terms = searchTerms.slice(0, 5);
 
-  const likeConditions = searchTerms
-    .slice(0, 5)
+  const likeConditions = terms
     .map((_, i) => `(title LIKE ?${i + 1} OR description LIKE ?${i + 1} OR tags LIKE ?${i + 1})`)
     .join(' OR ');
 
-  const params = searchTerms.slice(0, 5).map(t => `%${t}%`);
+  const params = terms.map(t => `%${t}%`);
+  const orderParam = params.length + 1;
+  const limitParam = params.length + 2;
 
   try {
     const result = await env.DB.prepare(`
@@ -345,11 +398,11 @@ async function retrieveVideos(
       FROM videos
       WHERE ${likeConditions || '1=1'}
       ORDER BY
-        CASE WHEN title LIKE ?6 THEN 1 ELSE 2 END,
+        CASE WHEN title LIKE ?${orderParam} THEN 1 ELSE 2 END,
         view_count DESC
-      LIMIT ?7
+      LIMIT ?${limitParam}
     `)
-      .bind(...params, `%${searchTerms[0] || ''}%`, Math.min(filters.topK, 5))
+      .bind(...params, `%${terms[0] || ''}%`, Math.min(filters.topK, 5))
       .all();
 
     return (result.results || []).map((row: Record<string, unknown>) => ({
@@ -411,4 +464,88 @@ export async function getProductImages(
     console.error('Error retrieving product images:', error);
     return new Map();
   }
+}
+
+/**
+ * Filter recipes by dietary preferences
+ * Prioritizes recipes that match user's dietary tags
+ */
+function filterByDietaryPreferences(
+  recipes: RagContext['recipes'],
+  dietaryPreferences: string[],
+  limit: number
+): RagContext['recipes'] {
+  // Normalize preferences for matching
+  const normalizedPrefs = dietaryPreferences.map(p => p.toLowerCase());
+
+  // Score recipes by how many dietary preferences they match
+  const scored = recipes.map(recipe => {
+    const recipeTags = (recipe.dietary || []).map(t => t.toLowerCase());
+    let score = 0;
+
+    for (const pref of normalizedPrefs) {
+      // Check for direct match
+      if (recipeTags.some(tag => tag.includes(pref) || pref.includes(tag))) {
+        score += 2;
+      }
+      // Check for related matches
+      if (pref === 'keto' && recipeTags.some(t => t.includes('low-carb') || t.includes('low carb'))) {
+        score += 1;
+      }
+      if (pref === 'vegan' && recipeTags.some(t => t.includes('plant-based') || t.includes('dairy-free'))) {
+        score += 1;
+      }
+      if (pref === 'gluten-free' && recipeTags.some(t => t.includes('celiac') || t.includes('gf'))) {
+        score += 1;
+      }
+    }
+
+    return { recipe, score };
+  });
+
+  // Sort by score (highest first), then take top results
+  scored.sort((a, b) => b.score - a.score);
+
+  // Log filtering results
+  const matchCount = scored.filter(s => s.score > 0).length;
+  if (matchCount > 0) {
+    console.log(`[RAG] Dietary filtering: ${matchCount}/${recipes.length} recipes match preferences`);
+  }
+
+  return scored.slice(0, limit).map(s => s.recipe);
+}
+
+/**
+ * Boost products from preferred series to the top
+ */
+function boostPreferredSeries(
+  products: RagContext['products'],
+  preferredSeries: string[]
+): RagContext['products'] {
+  // Normalize series names for matching
+  const normalizedPrefs = preferredSeries.map(s => s.toLowerCase());
+
+  // Separate preferred and other products
+  const preferred: RagContext['products'] = [];
+  const others: RagContext['products'] = [];
+
+  for (const product of products) {
+    const productSeries = (product.series || '').toLowerCase();
+    const isPreferred = normalizedPrefs.some(pref =>
+      productSeries.includes(pref) || pref.includes(productSeries)
+    );
+
+    if (isPreferred) {
+      preferred.push(product);
+    } else {
+      others.push(product);
+    }
+  }
+
+  // Log boosting results
+  if (preferred.length > 0) {
+    console.log(`[RAG] Series boosting: ${preferred.length} products from preferred series moved to top`);
+  }
+
+  return [...preferred, ...others];
 }

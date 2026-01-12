@@ -330,6 +330,12 @@ function handleEvent(event, data, ctx) {
     case 'complete':
       onComplete(data);
       container.classList.add('generation-complete');
+      // Show publish button
+      showPublishButton(container, {
+        title: data.title,
+        description: data.description,
+        slug: data.slug || window.location.pathname.replace(/^\//, ''),
+      });
       break;
 
     case 'error':
@@ -376,8 +382,8 @@ function updateShimmerMessage(shimmer, message) {
 function updateImage(container, imageData) {
   const { id, url, success } = imageData;
 
-  // Find image by index
-  const images = container.querySelectorAll('img[data-original-src]');
+  // Find image by index (images with data-image-hint are candidates for generation)
+  const images = container.querySelectorAll('img[data-image-hint]');
   const index = parseInt(id.replace('img-', ''), 10);
 
   if (images[index]) {
@@ -389,6 +395,8 @@ function updateImage(container, imageData) {
       img.src = url;
       img.classList.remove('image-loading');
       img.classList.add('image-loaded');
+      // Clear the hint so we don't re-process
+      img.removeAttribute('data-image-hint');
     };
     newImg.onerror = () => {
       img.classList.remove('image-loading');
@@ -396,6 +404,107 @@ function updateImage(container, imageData) {
     };
     newImg.src = url;
   }
+}
+
+/**
+ * Show publish button after generation completes
+ */
+function showPublishButton(container, generationData) {
+  // Remove existing publish button if any
+  const existing = container.querySelector('.publish-bar');
+  if (existing) existing.remove();
+
+  const publishBar = document.createElement('div');
+  publishBar.className = 'publish-bar';
+  publishBar.innerHTML = `
+    <div class="publish-bar-content">
+      <span class="publish-status">Page generated successfully</span>
+      <button class="publish-btn">Publish to AEM</button>
+    </div>
+  `;
+
+  const btn = publishBar.querySelector('.publish-btn');
+  const status = publishBar.querySelector('.publish-status');
+
+  btn.addEventListener('click', async () => {
+    btn.disabled = true;
+    btn.textContent = 'Publishing...';
+    status.textContent = 'Saving to AEM...';
+
+    try {
+      const result = await publishPage(container, generationData);
+
+      if (result.success) {
+        status.innerHTML = `Published! <a href="${result.liveUrl}" target="_blank">View live page</a>`;
+        btn.textContent = 'Published';
+        btn.classList.add('published');
+      } else {
+        status.textContent = `Error: ${result.error}`;
+        btn.disabled = false;
+        btn.textContent = 'Retry';
+      }
+    } catch (error) {
+      status.textContent = `Error: ${error.message}`;
+      btn.disabled = false;
+      btn.textContent = 'Retry';
+    }
+  });
+
+  container.insertBefore(publishBar, container.firstChild);
+}
+
+/**
+ * Publish page to AEM Document Authoring
+ */
+async function publishPage(container, generationData) {
+  // Collect blocks from the container, excluding the publish bar
+  const blocks = [];
+
+  // First try to find .section wrappers
+  const sections = container.querySelectorAll('.section');
+
+  if (sections.length > 0) {
+    sections.forEach((section) => {
+      const blockElements = section.querySelectorAll('[class*="block"]');
+      blockElements.forEach((block) => {
+        blocks.push({
+          html: block.outerHTML,
+          sectionStyle: section.dataset.style || 'default',
+        });
+      });
+    });
+  }
+
+  // If no sections found, collect direct child elements that are blocks
+  // but exclude publish-bar and other UI elements
+  if (blocks.length === 0) {
+    const children = container.children;
+    for (const child of children) {
+      // Skip publish bar and other UI elements
+      if (child.classList.contains('publish-bar') ||
+          child.classList.contains('shimmer-placeholder') ||
+          child.classList.contains('generation-error')) {
+        continue;
+      }
+      blocks.push({
+        html: child.outerHTML,
+        sectionStyle: 'default',
+      });
+    }
+  }
+
+  const response = await fetch(`${API_BASE}/api/persist`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      title: generationData.title || document.title,
+      description: generationData.description || '',
+      slug: generationData.slug || window.location.pathname.replace(/^\//, '') || 'generated-page',
+      blocks,
+    }),
+  });
+
+  return response.json();
 }
 
 /**

@@ -6,15 +6,19 @@ compatibility_flags = ["nodejs_compat"]
 [vars]
 ENVIRONMENT = "development"
 VERTEX_LOCATION = "us-central1"
-ANALYTICS_ENDPOINT = "https://pagepoof-analytics.paolomoz.workers.dev"
+ANALYTICS_ENDPOINT = "https://pagepoof-analytics.paolo-moz.workers.dev"
+# Document Authoring org and repo
+DA_ORG = "paolomoz"
+DA_REPO = "pagepoof"
 
 # Required secrets (set via `wrangler secret put <NAME>`):
 # - ANTHROPIC_API_KEY: Claude API key for content generation
 # - GOOGLE_AI_API_KEY: Gemini API key for layout selection
 # - GOOGLE_SERVICE_ACCOUNT_JSON: Full JSON of GCP service account for Imagen 3
 # - VERTEX_PROJECT_ID: GCP project ID for Vertex AI
-# - OPENAI_API_KEY: OpenAI API key for multi-agent analysis (optional, for cross-validation)
-# - DA_TOKEN: AEM Document Authoring token for persistence
+# - DA_CLIENT_ID: Adobe IMS client ID for S2S auth
+# - DA_CLIENT_SECRET: Adobe IMS client secret
+# - DA_SERVICE_TOKEN: Adobe IMS service token
 
 # R2 bucket for generated images
 [[r2_buckets]]
