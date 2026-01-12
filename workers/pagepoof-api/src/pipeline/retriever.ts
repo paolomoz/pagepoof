@@ -89,16 +89,26 @@ export async function retrieveContext(
     try {
       const semanticResults = await retrieveWithVectorize(query, filters, env, userProfile);
       if (semanticResults.products.length > 0 || semanticResults.recipes.length > 0) {
-        // Supplement with FAQs and videos from D1 keyword search
-        const [faqs, videos] = await Promise.all([
+        // Supplement with FAQs, videos, and D1 keyword search for missing collections
+        const [faqs, videos, d1Products] = await Promise.all([
           filters.collections.includes('faqs')
             ? retrieveFaqs(query, keywords, filters, env, classification)
             : Promise.resolve([]),
           filters.collections.includes('videos')
             ? retrieveVideos(query, keywords, filters, env)
             : Promise.resolve([]),
+          // Fall back to D1 for products if Vectorize didn't find any but collection expects them
+          (filters.collections.includes('products') && semanticResults.products.length === 0)
+            ? retrieveProducts(query, keywords, filters, env, userProfile, classification)
+            : Promise.resolve([]),
         ]);
-        return { ...semanticResults, faqs, videos };
+
+        // Merge D1 products with Vectorize results (D1 supplements when Vectorize has gaps)
+        const products = semanticResults.products.length > 0
+          ? semanticResults.products
+          : d1Products;
+
+        return { products, recipes: semanticResults.recipes, faqs, videos };
       }
     } catch (error) {
       console.error('Vectorize search failed, falling back to keyword search:', error);

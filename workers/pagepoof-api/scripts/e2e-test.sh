@@ -171,8 +171,8 @@ run_test "R5" "Which Vitamix blender is best" "products" ">=3" "General product 
 
 echo ""
 echo "=== Special Context Tests ==="
-# S1 tests accessibility classification (retrieval depends on product data having accessibility attributes)
-run_test "S1" "I am a senior with limited grip strength" "type" "product" "Accessibility classified as product"
+# S1 tests accessibility products retrieval (products now have accessibility tags)
+run_test "S1" "I am a senior with limited grip strength" "products" ">=1" "Accessibility retrieves products"
 run_test "S2" "Quiet blender for thin walled apartment" "products" ">=3" "Noise query retrieves products"
 run_test "S4" "Budget is 300 dollars for a wedding gift" "products" ">=1" "Budget query retrieves products"
 
