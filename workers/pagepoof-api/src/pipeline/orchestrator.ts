@@ -6,11 +6,12 @@
 import { classifyQuery, type ClassificationResult } from './classifier';
 import { generateContentAtoms, generateHeroContent, type GenerationResult, type RagContext } from './generator';
 import { selectLayout, type LayoutResult } from './layout';
-import { renderBlocks, buildPageHtml, type RenderedBlock } from './renderer';
+import { renderBlocksWithStats, buildPageHtml, type RenderedBlock } from './renderer';
 import { retrieveContext } from './retriever';
 import { generateImages, extractImageRequests, type ImageRequest, type GeneratedImage, type ImagenEnv } from '../ai-clients/imagen';
 import { type Session, buildSessionContext, addQueryToSession } from '../lib/session';
 import { trackQuery, trackPagePublished } from '../lib/tracking';
+import { loadUrlCatalog, correctUrls, type UrlCatalog } from './url-mapper';
 
 export interface Env {
   DB: D1Database;
@@ -106,6 +107,9 @@ export async function runPipeline(
     // Start hero generation immediately (fast Haiku model ~1s)
     const heroPromise = generateHeroContent(query, classification, env.ANTHROPIC_API_KEY);
 
+    // Load URL catalog for post-processing (parallel with other operations)
+    const urlCatalogPromise = loadUrlCatalog(env.DB);
+
     // RAG retrieval runs in parallel with smart filtering based on user profile
     const context = await retrieveContext(
       query,
@@ -137,6 +141,7 @@ export async function runPipeline(
     const heroContent = await heroPromise;
 
     // Stream hero block immediately (~1-2s from query start)
+    // Note: Hero typically has no product/recipe URLs, but apply correction for consistency
     const heroHtml = renderHeroBlock(heroContent);
     await stream.write({
       event: 'block',
@@ -185,13 +190,35 @@ export async function runPipeline(
       },
     });
 
-    // Phase 5: Block rendering and streaming
+    // Phase 5: Block rendering and streaming (with error recovery)
     await stream.write({
       event: 'progress',
       data: { step: 'rendering', message: 'Building page blocks...' },
     });
 
-    const renderedBlocks = renderBlocks(layout.blocks, generation.atoms);
+    const renderResult = renderBlocksWithStats(layout.blocks, generation.atoms);
+
+    // Apply URL correction to rendered blocks
+    const urlCatalog = await urlCatalogPromise;
+    const renderedBlocks = renderResult.blocks.map(block => ({
+      ...block,
+      html: correctUrls(block.html, urlCatalog),
+    }));
+
+    // Report any block failures
+    if (renderResult.failedCount > 0) {
+      const failedBlocks = renderedBlocks.filter(b => b.error).map(b => b.name);
+      console.warn(`Block rendering: ${renderResult.failedCount}/${renderResult.totalCount} blocks failed:`, failedBlocks);
+
+      await stream.write({
+        event: 'block-errors',
+        data: {
+          failedCount: renderResult.failedCount,
+          totalCount: renderResult.totalCount,
+          failedBlocks,
+        },
+      });
+    }
 
     // Stream each block (skip hero if already streamed)
     for (let i = 0; i < renderedBlocks.length; i++) {
@@ -206,6 +233,8 @@ export async function runPipeline(
           name: block.name,
           html: block.html,
           index: i,
+          error: block.error || false,
+          errorMessage: block.error ? block.errorMessage : undefined,
         },
       });
 
@@ -303,6 +332,7 @@ export async function runPipeline(
         title: generation.title,
         description: generation.description,
         blockCount: renderedBlocks.length,
+        blocksWithErrors: renderResult.failedCount,
         queryType: classification.type,
         slug,
         pageUrl,

@@ -12,25 +12,83 @@ export interface RenderedBlock {
   name: string;
   html: string;
   atoms: ContentAtom[];
+  error?: boolean;      // True if block rendering failed
+  errorMessage?: string; // Error details for debugging
+}
+
+export interface RenderResult {
+  blocks: RenderedBlock[];
+  failedCount: number;
+  totalCount: number;
 }
 
 /**
- * Render all blocks to HTML
+ * Render all blocks to HTML with error recovery
+ * Failed blocks are replaced with placeholder content
  */
 export function renderBlocks(
   blocks: LayoutBlock[],
   atoms: ContentAtom[]
 ): RenderedBlock[] {
-  return blocks.map(block => {
+  return blocks.map((block, index) => {
     const blockAtoms = block.atomIndices.map(i => atoms[i]).filter(Boolean);
-    const html = renderBlock(block.blockName, blockAtoms, block.variant);
 
-    return {
-      name: block.blockName,
-      html,
-      atoms: blockAtoms,
-    };
+    try {
+      const html = renderBlock(block.blockName, blockAtoms, block.variant);
+
+      return {
+        name: block.blockName,
+        html,
+        atoms: blockAtoms,
+      };
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      console.error(`Block rendering failed [${block.blockName}]:`, errorMessage);
+
+      // Return fallback placeholder block
+      return {
+        name: block.blockName,
+        html: renderErrorPlaceholder(block.blockName, errorMessage),
+        atoms: blockAtoms,
+        error: true,
+        errorMessage,
+      };
+    }
   });
+}
+
+/**
+ * Render all blocks with detailed result including failure stats
+ */
+export function renderBlocksWithStats(
+  blocks: LayoutBlock[],
+  atoms: ContentAtom[]
+): RenderResult {
+  const renderedBlocks = renderBlocks(blocks, atoms);
+  const failedCount = renderedBlocks.filter(b => b.error).length;
+
+  return {
+    blocks: renderedBlocks,
+    failedCount,
+    totalCount: renderedBlocks.length,
+  };
+}
+
+/**
+ * Render a placeholder for failed blocks
+ */
+function renderErrorPlaceholder(blockName: string, errorMessage: string): string {
+  // In production, show a clean placeholder; in dev, show error details
+  const isDev = typeof process !== 'undefined' && process.env?.NODE_ENV === 'development';
+
+  return `<div class="${blockName} block-error">
+  <div>
+    <div>
+      <p class="error-placeholder">Content temporarily unavailable</p>
+      ${isDev ? `<p class="error-details">${escapeHtml(errorMessage)}</p>` : ''}
+    </div>
+  </div>
+</div>`;
 }
 
 /**
