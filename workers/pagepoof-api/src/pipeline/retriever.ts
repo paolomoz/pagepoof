@@ -39,6 +39,12 @@ const TERM_EXPANSIONS: Record<string, string[]> = {
   swallow: ['dysphagia', 'puree', 'texture', 'safe', 'medical'],
   therapy: ['medical', 'recovery', 'dysphagia', 'puree'],
   puree: ['texture', 'smooth', 'medical', 'baby', 'soft'],
+  // Baby/family terms
+  baby: ['puree', 'smooth', 'family', 'nutrition', 'food', 'infant', 'toddler'],
+  parent: ['baby', 'family', 'food', 'nutrition', 'easy', 'quick'],
+  family: ['baby', 'large', 'capacity', 'batch', 'meal-prep'],
+  infant: ['baby', 'puree', 'smooth', 'nutrition', 'food'],
+  toddler: ['baby', 'family', 'nutrition', 'food', 'smooth'],
   // Budget terms
   budget: ['price', 'cost', 'affordable', 'value', 'cheap', 'save'],
   cheap: ['budget', 'affordable', 'value', 'price', 'cost'],
