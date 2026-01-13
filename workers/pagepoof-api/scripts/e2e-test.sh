@@ -25,7 +25,7 @@ echo ""
 fetch_sse() {
     local url=$1
     local timeout_secs=${2:-45}
-    local tmpfile="$TMPDIR/e2e_response_$$.txt"
+    local tmpfile="$TMPDIR/e2e_response_$$_$(date +%s%N).txt"
 
     # Start curl in background, write to temp file
     curl -sN "$url" > "$tmpfile" 2>/dev/null &
@@ -154,6 +154,9 @@ run_test() {
         echo "  Expected: $expected, Actual: $actual"
         ((FAILED++))
     fi
+
+    # Small delay between tests to avoid rate limiting
+    sleep 1
 }
 
 echo "=== Classification Tests ==="
